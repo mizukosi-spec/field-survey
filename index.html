@@ -1057,6 +1057,11 @@ html,body{
   </div>
 
   <div class="field">
+    <label>数</label>
+    <input type="number" id="fCount" inputmode="numeric" placeholder="例：1">
+  </div>
+
+  <div class="field">
     <label>場所（自由記述・手書き）</label>
     <input type="text" id="fLocationText" placeholder="例：〇〇邸の南側屋根 など" style="margin-bottom:8px;">
     <div class="sketch-pad-wrap" id="padWrap-location">
@@ -1164,6 +1169,11 @@ html,body{
   </div>
 
   <div class="field">
+    <label>数</label>
+    <input type="number" id="sCount" inputmode="numeric" placeholder="例：1">
+  </div>
+
+  <div class="field">
     <label>場所（手書き）</label>
     <div class="sketch-pad-wrap" id="padWrap-semiLocation">
       <div class="sketch-toolbar"><button type="button" data-clear="semiLocation">消す</button></div>
@@ -1178,6 +1188,18 @@ html,body{
       <div class="sketch-toolbar"><button type="button" data-clear="semiTree">消す</button></div>
       <canvas id="pad-semiTree" height="130"></canvas>
       <div class="sketch-hint">指かApple Pencilで書き込めます</div>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>セミの種類</label>
+    <div class="choice-row" data-field="semiSpecies">
+      <button type="button" class="choice-btn" data-value="アブラゼミ">アブラゼミ</button>
+      <button type="button" class="choice-btn" data-value="クマゼミ">クマゼミ</button>
+      <button type="button" class="choice-btn" data-value="ヒグラシ">ヒグラシ</button>
+      <button type="button" class="choice-btn" data-value="ツクツクボウシ">ツクツクボウシ</button>
+      <button type="button" class="choice-btn" data-value="ミンミンゼミ">ミンミンゼミ</button>
+      <button type="button" class="choice-btn" data-value="その他">その他</button>
     </div>
   </div>
 
@@ -1307,6 +1329,7 @@ html,body{
     <li><span class="num">2</span><span>右上の ⬇ ボタンで、今表示している範囲の航空写真をこの端末に保存できます。保存後はネット接続がなくても表示されます。</span></li>
     <li><span class="num">3</span><span>右下の ＋ ボタンを押してから地図をタップすると、「屋根マーク調べ」か「セミのぬけがら調べ」かを選ぶ画面が出ます。</span></li>
     <li><span class="num">4</span><span>手書き欄は指やApple Pencilで直接書き込めます。「写真を撮る」ボタンでカメラが起動し、撮影した写真もその地点の情報として保存されます。</span></li>
+    <li><span class="num">4-2</span><span>方角や色などのボタン項目は、複数タップして選ぶこともできます（もう一度タップで選択解除）。</span></li>
     <li><span class="num">5</span><span>地図上のマーカーをタップすると内容の確認・編集・削除ができます。</span></li>
     <li><span class="num">6</span><span>左上の ☰ ボタンで登録した地点の一覧（種類ごとの絞り込みつき）を確認し、GeoJSON形式で書き出せます。</span></li>
     <li><span class="num">6-2</span><span>☁ ボタンで、Wi-Fi接続時に複数の端末どうしでデータを共有できます。同じ「グループ名」を入れた端末どうしがつながります。</span></li>
@@ -1777,19 +1800,20 @@ function initPhotoField(prefix){
 const photoYane = initPhotoField("yane");
 const photoSemi = initPhotoField("semi");
 
-/* ============== choice groups (generic, field-name keyed) ============== */
+/* ============== choice groups (generic, field-name keyed, multi-select) ============== */
+const CHOICE_SEP = "・";
 const formState = {};
 document.querySelectorAll(".choice-row[data-field]").forEach(row => {
   const field = row.getAttribute("data-field");
   const isSemi = row.closest("#pointSheetSemi") !== null;
   row.querySelectorAll(".choice-btn").forEach(btn => {
     btn.addEventListener("click", () => {
-      row.querySelectorAll(".choice-btn").forEach(b => b.classList.remove("selected","semi-selected"));
-      btn.classList.add("selected");
-      if(isSemi) btn.classList.add("semi-selected");
-      formState[field] = btn.getAttribute("data-value");
+      btn.classList.toggle("selected");
+      btn.classList.toggle("semi-selected", isSemi && btn.classList.contains("selected"));
+      const values = [...row.querySelectorAll(".choice-btn.selected")].map(b => b.getAttribute("data-value"));
+      formState[field] = values.join(CHOICE_SEP);
       if(field === "color"){
-        document.getElementById("fColorOther").style.display = (formState.color === "その他") ? "block" : "none";
+        document.getElementById("fColorOther").style.display = values.includes("その他") ? "block" : "none";
       }
     });
   });
@@ -1801,10 +1825,11 @@ function resetChoiceRow(field){
 }
 function applyChoiceRow(field, value){
   const row = document.querySelector(`.choice-row[data-field="${field}"]`);
+  const selectedValues = (value || "").split(CHOICE_SEP).map(s => s.trim()).filter(Boolean);
   if(row){
     const isSemi = row.closest("#pointSheetSemi") !== null;
     row.querySelectorAll(".choice-btn").forEach(b => {
-      const match = b.getAttribute("data-value") === value;
+      const match = selectedValues.includes(b.getAttribute("data-value"));
       b.classList.toggle("selected", match);
       b.classList.toggle("semi-selected", match && isSemi);
     });
@@ -1881,6 +1906,7 @@ async function openPointForm(type, existing){
         ? "オンラインで他の端末と重ならない番号を発行しました"
         : "この端末だけの仮の番号です（共有設定がオフ、または未接続）";
     }
+    document.getElementById("fCount").value = existing ? (existing.count || "") : "";
     document.getElementById("fLocationText").value = existing ? (existing.location && existing.location.text) || "" : "";
     document.getElementById("fMarkText").value = existing ? (existing.mark && existing.mark.text) || "" : "";
     document.getElementById("fOtherText").value = existing ? (existing.other && existing.other.text) || "" : "";
@@ -1916,10 +1942,12 @@ async function openPointForm(type, existing){
         ? "オンラインで他の端末と重ならない番号を発行しました"
         : "この端末だけの仮の番号です（共有設定がオフ、または未接続）";
     }
+    document.getElementById("sCount").value = existing ? (existing.count || "") : "";
     document.getElementById("sHeight").value = existing ? (existing.height || "") : "";
     document.getElementById("sThickness").value = existing ? (existing.thickness || "") : "";
-    ["semiPart","semiDirection","semiGround"].forEach(f => resetChoiceRow(f));
+    ["semiSpecies","semiPart","semiDirection","semiGround"].forEach(f => resetChoiceRow(f));
     if(existing){
+      applyChoiceRow("semiSpecies", existing.semiSpecies);
       applyChoiceRow("semiPart", existing.semiPart);
       applyChoiceRow("semiDirection", existing.semiDirection);
       applyChoiceRow("semiGround", existing.semiGround);
@@ -1941,6 +1969,7 @@ document.getElementById("saveYaneBtn").addEventListener("click", async () => {
     surveyType: "yane",
     lat: pendingLatLng.lat, lng: pendingLatLng.lng,
     number: document.getElementById("fNumber").value.trim(),
+    count: document.getElementById("fCount").value.trim(),
     location: { text: document.getElementById("fLocationText").value.trim(), sketch: sketchPads.location.toDataURL() },
     mark: { text: document.getElementById("fMarkText").value.trim(), sketch: sketchPads.mark.toDataURL() },
     photo: photoYane.getValue(),
@@ -1948,7 +1977,7 @@ document.getElementById("saveYaneBtn").addEventListener("click", async () => {
     entranceSide: formState.entranceSide,
     houseType: formState.houseType,
     color: formState.color,
-    colorOther: formState.color === "その他" ? document.getElementById("fColorOther").value.trim() : "",
+    colorOther: formState.color.split(CHOICE_SEP).includes("その他") ? document.getElementById("fColorOther").value.trim() : "",
     other: { text: document.getElementById("fOtherText").value.trim(), sketch: sketchPads.other.toDataURL() },
     updatedAt: new Date().toISOString(),
   };
@@ -1961,9 +1990,11 @@ document.getElementById("saveSemiBtn").addEventListener("click", async () => {
     surveyType: "semi",
     lat: pendingLatLng.lat, lng: pendingLatLng.lng,
     number: document.getElementById("sNumber").value.trim(),
+    count: document.getElementById("sCount").value.trim(),
     location: { sketch: sketchPads.semiLocation.toDataURL() },
     treeType: { sketch: sketchPads.semiTree.toDataURL() },
     photo: photoSemi.getValue(),
+    semiSpecies: formState.semiSpecies,
     semiPart: formState.semiPart,
     semiDirection: formState.semiDirection,
     height: document.getElementById("sHeight").value.trim(),
@@ -2003,8 +2034,9 @@ async function deleteCurrentPoint(){
 const markerRefs = {};
 function colorHexOf(p){
   if(p.surveyType === "semi") return SEMI_HEX;
-  if(p.color === "その他") return COLOR_HEX["その他"];
-  return COLOR_HEX[p.color] || "#94A3B8";
+  const first = (p.color || "").split(CHOICE_SEP)[0];
+  if(first === "その他") return COLOR_HEX["その他"];
+  return COLOR_HEX[first] || "#94A3B8";
 }
 async function renderAllPoints(){
   pointsLayer.clearLayers();
@@ -2012,7 +2044,8 @@ async function renderAllPoints(){
   const points = await idbGetAll("points");
   points.forEach(p => {
     const hex = colorHexOf(p);
-    const borderColor = (p.surveyType === "yane" && p.color === "白") ? "#1F2430" : "#fff";
+    const firstColor = (p.color || "").split(CHOICE_SEP)[0];
+    const borderColor = (p.surveyType === "yane" && firstColor === "白") ? "#1F2430" : "#fff";
     const shape = p.surveyType === "semi" ? "square" : "round";
     const icon = L.divIcon({
       className: "pt-marker",
@@ -2039,6 +2072,8 @@ async function renderAllPoints(){
 function buildPopupHtml(p){
   if(p.surveyType === "semi"){
     const rows = [
+      ["数", p.count],
+      ["セミの種類", p.semiSpecies],
       ["部分", p.semiPart],
       ["方角", p.semiDirection],
       ["高さ", p.height ? p.height + " cm" : ""],
@@ -2054,8 +2089,11 @@ function buildPopupHtml(p){
     html += `<div class="prow"><span class="plink" data-edit="1">編集</span><span class="plink del" data-del="1">削除</span></div>`;
     return html;
   }
-  const colorLabel = p.color === "その他" ? (p.colorOther || "その他") : p.color;
+  const colorLabel = (p.color || "").split(CHOICE_SEP)
+    .map(c => c === "その他" ? (p.colorOther || "その他") : c)
+    .join(CHOICE_SEP);
   const rows = [
+    ["数", p.count],
     ["方角", p.direction],
     ["玄関からの向き", p.entranceSide],
     ["家の種類", p.houseType],
@@ -2109,7 +2147,7 @@ async function renderPointList(){
     const hex = colorHexOf(p);
     let mainText, metaText, dotClass = "";
     if(p.surveyType === "semi"){
-      mainText = "セミのぬけがら" + (p.location && p.location.sketch ? "（場所メモあり）" : "");
+      mainText = (p.semiSpecies || "セミのぬけがら") + (p.location && p.location.sketch ? "（場所メモあり）" : "");
       metaText = [p.semiPart, p.semiDirection].filter(Boolean).join(" ・ ");
       dotClass = "square";
     } else {
@@ -2147,6 +2185,7 @@ document.getElementById("exportBtn").addEventListener("click", async () => {
       properties: {
         surveyType: p.surveyType,
         number: p.number,
+        count: p.count,
         photo: p.photo,
         location_text: p.location && p.location.text,
         location_sketch: p.location && p.location.sketch,
@@ -2156,9 +2195,12 @@ document.getElementById("exportBtn").addEventListener("click", async () => {
         direction: p.direction,
         entranceSide: p.entranceSide,
         houseType: p.houseType,
-        color: p.surveyType === "yane" ? (p.color === "その他" ? (p.colorOther || "その他") : p.color) : undefined,
+        color: p.surveyType === "yane"
+          ? (p.color || "").split("・").map(c => c === "その他" ? (p.colorOther || "その他") : c).join("・")
+          : undefined,
         other_text: p.other && p.other.text,
         other_sketch: p.other && p.other.sketch,
+        semiSpecies: p.semiSpecies,
         semiPart: p.semiPart,
         semiDirection: p.semiDirection,
         height_cm: p.height,
@@ -2359,6 +2401,7 @@ pullBtn.addEventListener("click", async () => {
         surveyType: r.surveyType,
         lat: r.lat, lng: r.lng,
         number: r.number,
+        count: r.count || "",
         deviceName: r.deviceName,
         createdAt: r.createdAt,
         updatedAt: r.updatedAt,
@@ -2383,17 +2426,25 @@ pullBtn.addEventListener("click", async () => {
         houseType: r.houseType || "",
         color: r.color || "",
         colorOther: "",
+        semiSpecies: r.semiSpecies || "",
         semiPart: r.semiPart || "",
         semiDirection: r.semiDirection || "",
         height: r.height || "",
         thickness: r.thickness || "",
         semiGround: r.semiGround || "",
       };
-      /* 「色」がその他系の値なら、選択肢に無い色として扱う */
-      if(point.surveyType === "yane" && point.color &&
-         ["黒","緑","青","赤","白"].indexOf(point.color) < 0){
-        point.colorOther = point.color;
-        point.color = "その他";
+      /* 「色」の中に選択肢に無い言葉が混ざっていたら、その他＋自由記述として扱う */
+      if(point.surveyType === "yane" && point.color){
+        const presets = ["黒","緑","青","赤","白","その他"];
+        let colorOther = "";
+        let tokens = point.color.split("・").filter(Boolean).map(t => {
+          if(presets.indexOf(t) >= 0) return t;
+          colorOther = t;
+          return "その他";
+        });
+        tokens = [...new Set(tokens)];
+        point.color = tokens.join("・");
+        point.colorOther = colorOther;
       }
       await window.__fieldApp.idbSet("points", point.id, point);
       if(item.local) updated++; else added++;
