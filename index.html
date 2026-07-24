@@ -965,6 +965,41 @@ html,body{
 .photo-actions{ display:flex; gap:8px; padding:10px; }
 .photo-actions .btn{ padding:10px; font-size:13.5px; }
 
+/* crop tool */
+#cropOverlay{
+  position:absolute; inset:0; z-index:4000; background:rgba(5,7,10,0.96);
+  display:none; flex-direction:column;
+  padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom);
+}
+#cropOverlay.show{ display:flex; }
+.crop-top{
+  flex-shrink:0; text-align:center; padding:14px 10px; color:var(--text-primary);
+  font-size:14px; font-weight:700;
+}
+#cropStage{
+  flex:1; position:relative; display:flex; align-items:center; justify-content:center;
+  overflow:hidden; touch-action:none; min-height:0;
+}
+#cropStage img{ max-width:92%; max-height:92%; display:block; user-select:none; -webkit-user-drag:none; }
+#cropBox{
+  position:absolute; border:2px solid var(--accent);
+  box-shadow:0 0 0 9999px rgba(5,7,10,0.72);
+  touch-action:none; cursor:move;
+}
+.crop-handle{
+  position:absolute; width:26px; height:26px; margin:-13px;
+  background:var(--accent); border:2px solid #1a0e0a; border-radius:50%;
+  touch-action:none;
+}
+.crop-handle[data-handle="nw"]{ top:0; left:0; cursor:nwse-resize; }
+.crop-handle[data-handle="ne"]{ top:0; right:0; margin-right:-13px; cursor:nesw-resize; }
+.crop-handle[data-handle="sw"]{ bottom:0; left:0; margin-bottom:-13px; cursor:nesw-resize; }
+.crop-handle[data-handle="se"]{ bottom:0; right:0; margin-right:-13px; margin-bottom:-13px; cursor:nwse-resize; }
+.crop-bottom{
+  flex-shrink:0; display:flex; gap:10px; padding:14px; padding-bottom:calc(14px + env(safe-area-inset-bottom));
+}
+.crop-bottom .btn{ flex:1; }
+
 /* offline banner */
 #offlineBanner{
   position:absolute; top:0; left:0; right:0; z-index:1500; text-align:center;
@@ -1016,6 +1051,25 @@ html,body{
 </div>
 
 <div id="toast"><span class="toast-dot"></span><span id="toastMsg"></span></div>
+
+<!-- 写真トリミング -->
+<div id="cropOverlay">
+  <div class="crop-top">写真をトリミング</div>
+  <div id="cropStage">
+    <img id="cropImg" alt="トリミング対象の写真">
+    <div id="cropBox">
+      <div class="crop-handle" data-handle="nw"></div>
+      <div class="crop-handle" data-handle="ne"></div>
+      <div class="crop-handle" data-handle="sw"></div>
+      <div class="crop-handle" data-handle="se"></div>
+    </div>
+  </div>
+  <div class="crop-bottom">
+    <button type="button" class="btn btn-secondary" id="cropResetBtn">リセット</button>
+    <button type="button" class="btn btn-secondary" id="cropCancelBtn">トリミングしない</button>
+    <button type="button" class="btn btn-primary" id="cropConfirmBtn">この範囲で使う</button>
+  </div>
+</div>
 
 <div class="sheet-backdrop" id="backdrop"></div>
 
@@ -1112,6 +1166,7 @@ html,body{
       <div class="photo-preview" id="yanePhotoPreview" style="display:none;">
         <img id="yanePhotoImg" src="" alt="撮影した写真">
         <div class="photo-actions">
+          <button type="button" class="btn btn-secondary" id="yanePhotoTrimBtn">トリミング</button>
           <button type="button" class="btn btn-secondary" id="yanePhotoRetakeBtn">撮り直す</button>
           <button type="button" class="btn btn-danger" id="yanePhotoRemoveBtn">削除</button>
         </div>
@@ -1234,6 +1289,7 @@ html,body{
       <div class="photo-preview" id="semiPhotoPreview" style="display:none;">
         <img id="semiPhotoImg" src="" alt="撮影した写真">
         <div class="photo-actions">
+          <button type="button" class="btn btn-secondary" id="semiPhotoTrimBtn">トリミング</button>
           <button type="button" class="btn btn-secondary" id="semiPhotoRetakeBtn">撮り直す</button>
           <button type="button" class="btn btn-danger" id="semiPhotoRemoveBtn">削除</button>
         </div>
@@ -1788,6 +1844,113 @@ function compressImageFile(file, maxDim, quality){
     reader.readAsDataURL(file);
   });
 }
+/* ---------- 写真トリミング ---------- */
+function openCropTool(dataUrl){
+  return new Promise((resolve) => {
+    const overlay = document.getElementById("cropOverlay");
+    const img = document.getElementById("cropImg");
+    const box = document.getElementById("cropBox");
+    const stage = document.getElementById("cropStage");
+    const MIN_SIZE = 44;
+
+    function stageLocalRect(el){
+      const r = el.getBoundingClientRect();
+      const s = stage.getBoundingClientRect();
+      return { left: r.left - s.left, top: r.top - s.top, width: r.width, height: r.height };
+    }
+    function setBoxPx(left, top, w, h){
+      box.style.left = left + "px";
+      box.style.top = top + "px";
+      box.style.width = w + "px";
+      box.style.height = h + "px";
+    }
+    function resetCropBox(){
+      const ir = stageLocalRect(img);
+      const w = ir.width * 0.8, h = ir.height * 0.8;
+      setBoxPx(ir.left + (ir.width - w) / 2, ir.top + (ir.height - h) / 2, w, h);
+    }
+
+    let mode = null; // "move" | "nw" | "ne" | "sw" | "se"
+    let startBox = null, startPoint = null, imgBounds = null;
+
+    function onPointerDown(e, m){
+      mode = m;
+      startPoint = { x: e.clientX, y: e.clientY };
+      const b = box.getBoundingClientRect();
+      const s = stage.getBoundingClientRect();
+      startBox = { left: b.left - s.left, top: b.top - s.top, width: b.width, height: b.height };
+      imgBounds = stageLocalRect(img);
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    function onPointerMove(e){
+      if(!mode) return;
+      const dx = e.clientX - startPoint.x;
+      const dy = e.clientY - startPoint.y;
+      let { left, top, width, height } = startBox;
+      const minX = imgBounds.left, minY = imgBounds.top;
+      const maxX = imgBounds.left + imgBounds.width, maxY = imgBounds.top + imgBounds.height;
+
+      if(mode === "move"){
+        left = startBox.left + dx;
+        top = startBox.top + dy;
+        left = Math.max(minX, Math.min(left, maxX - width));
+        top = Math.max(minY, Math.min(top, maxY - height));
+      } else {
+        let right = startBox.left + startBox.width;
+        let bottom = startBox.top + startBox.height;
+        if(mode.includes("w")){ left = Math.min(Math.max(minX, startBox.left + dx), right - MIN_SIZE); }
+        if(mode.includes("e")){ right = Math.max(Math.min(maxX, startBox.left + startBox.width + dx), left + MIN_SIZE); }
+        if(mode.includes("n")){ top = Math.min(Math.max(minY, startBox.top + dy), bottom - MIN_SIZE); }
+        if(mode.includes("s")){ bottom = Math.max(Math.min(maxY, startBox.top + startBox.height + dy), top + MIN_SIZE); }
+        width = right - left;
+        height = bottom - top;
+      }
+      setBoxPx(left, top, width, height);
+    }
+    function onPointerUp(){ mode = null; }
+
+    box.addEventListener("pointerdown", (e) => {
+      if(e.target.classList.contains("crop-handle")) return;
+      onPointerDown(e, "move");
+    });
+    box.querySelectorAll(".crop-handle").forEach(h => {
+      h.addEventListener("pointerdown", (e) => onPointerDown(e, h.getAttribute("data-handle")));
+    });
+    document.addEventListener("pointermove", onPointerMove);
+    document.addEventListener("pointerup", onPointerUp);
+
+    function cleanup(){
+      document.removeEventListener("pointermove", onPointerMove);
+      document.removeEventListener("pointerup", onPointerUp);
+      overlay.classList.remove("show");
+    }
+
+    document.getElementById("cropResetBtn").onclick = resetCropBox;
+    document.getElementById("cropCancelBtn").onclick = () => { cleanup(); resolve(dataUrl); };
+    document.getElementById("cropConfirmBtn").onclick = () => {
+      const ir = img.getBoundingClientRect();
+      const br = box.getBoundingClientRect();
+      const scaleX = img.naturalWidth / ir.width;
+      const scaleY = img.naturalHeight / ir.height;
+      const sx = Math.max(0, (br.left - ir.left) * scaleX);
+      const sy = Math.max(0, (br.top - ir.top) * scaleY);
+      const sw = Math.min(img.naturalWidth - sx, br.width * scaleX);
+      const sh = Math.min(img.naturalHeight - sy, br.height * scaleY);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(sw));
+      canvas.height = Math.max(1, Math.round(sh));
+      canvas.getContext("2d").drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+      cleanup();
+      resolve(canvas.toDataURL("image/jpeg", 0.85));
+    };
+
+    img.onload = () => requestAnimationFrame(resetCropBox);
+    img.src = dataUrl;
+    overlay.classList.add("show");
+  });
+}
+
 function initPhotoField(prefix){
   const input = document.getElementById(prefix + "PhotoInput");
   const empty = document.getElementById(prefix + "PhotoEmpty");
@@ -1805,13 +1968,19 @@ function initPhotoField(prefix){
   document.getElementById(prefix + "PhotoTakeBtn").addEventListener("click", () => input.click());
   document.getElementById(prefix + "PhotoRetakeBtn").addEventListener("click", () => input.click());
   document.getElementById(prefix + "PhotoRemoveBtn").addEventListener("click", () => show(null));
+  document.getElementById(prefix + "PhotoTrimBtn").addEventListener("click", async () => {
+    if(!current) return;
+    const cropped = await openCropTool(current);
+    show(cropped);
+  });
   input.addEventListener("change", async () => {
     const file = input.files && input.files[0];
     input.value = "";
     if(!file) return;
     try{
-      const dataUrl = await compressImageFile(file, 1280, 0.72);
-      show(dataUrl);
+      const dataUrl = await compressImageFile(file, 1600, 0.8);
+      const cropped = await openCropTool(dataUrl);
+      show(cropped);
     }catch(e){
       toast("写真の読み込みに失敗しました", true);
     }
