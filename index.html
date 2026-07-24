@@ -6,6 +6,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b0e13">
+<link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%20%22%E3%83%95%E3%82%A3%E3%83%BC%E3%83%AB%E3%83%89%E8%AA%BF%E3%81%B9%22%2C%20%22short_name%22%3A%20%22%E3%83%95%E3%82%A3%E3%83%BC%E3%83%AB%E3%83%89%E8%AA%BF%E3%81%B9%22%2C%20%22start_url%22%3A%20%22.%22%2C%20%22display%22%3A%20%22standalone%22%2C%20%22background_color%22%3A%20%22%230b0e13%22%2C%20%22theme_color%22%3A%20%22%230b0e13%22%2C%20%22icons%22%3A%20%5B%7B%22src%22%3A%20%22data%3Aimage/svg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A//www.w3.org/2000/svg%2522%2520viewBox%253D%25220%25200%2520192%2520192%2522%253E%253Crect%2520width%253D%2522192%2522%2520height%253D%2522192%2522%2520rx%253D%252240%2522%2520fill%253D%2522%25230f141c%2522/%253E%253Cpath%2520d%253D%2522M96%252034c-28%25200-50%252021-50%252049%25200%252038%252050%252075%252050%252075s50-37%252050-75c0-28-22-49-50-49z%2522%2520fill%253D%2522%2523FF6B4A%2522/%253E%253Ccircle%2520cx%253D%252296%2522%2520cy%253D%252283%2522%2520r%253D%252218%2522%2520fill%253D%2522%25230f141c%2522/%253E%253C/svg%253E%22%2C%20%22sizes%22%3A%20%22192x192%22%2C%20%22type%22%3A%20%22image/svg%2Bxml%22%7D%2C%20%7B%22src%22%3A%20%22data%3Aimage/svg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A//www.w3.org/2000/svg%2522%2520viewBox%253D%25220%25200%2520192%2520192%2522%253E%253Crect%2520width%253D%2522192%2522%2520height%253D%2522192%2522%2520rx%253D%252240%2522%2520fill%253D%2522%25230f141c%2522/%253E%253Cpath%2520d%253D%2522M96%252034c-28%25200-50%252021-50%252049%25200%252038%252050%252075%252050%252075s50-37%252050-75c0-28-22-49-50-49z%2522%2520fill%253D%2522%2523FF6B4A%2522/%253E%253Ccircle%2520cx%253D%252296%2522%2520cy%253D%252283%2522%2520r%253D%252218%2522%2520fill%253D%2522%25230f141c%2522/%253E%253C/svg%253E%22%2C%20%22sizes%22%3A%20%22512x512%22%2C%20%22type%22%3A%20%22image/svg%2Bxml%22%7D%5D%7D">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20192%20192%22%3E%3Crect%20width%3D%22192%22%20height%3D%22192%22%20rx%3D%2240%22%20fill%3D%22%230f141c%22/%3E%3Cpath%20d%3D%22M96%2034c-28%200-50%2021-50%2049%200%2038%2050%2075%2050%2075s50-37%2050-75c0-28-22-49-50-49z%22%20fill%3D%22%23FF6B4A%22/%3E%3Ccircle%20cx%3D%2296%22%20cy%3D%2283%22%20r%3D%2218%22%20fill%3D%22%230f141c%22/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20192%20192%22%3E%3Crect%20width%3D%22192%22%20height%3D%22192%22%20rx%3D%2240%22%20fill%3D%22%230f141c%22/%3E%3Cpath%20d%3D%22M96%2034c-28%200-50%2021-50%2049%200%2038%2050%2075%2050%2075s50-37%2050-75c0-28-22-49-50-49z%22%20fill%3D%22%23FF6B4A%22/%3E%3Ccircle%20cx%3D%2296%22%20cy%3D%2283%22%20r%3D%2218%22%20fill%3D%22%230f141c%22/%3E%3C/svg%3E">
 <title>フィールド調べ | 地理院地図オフライン調査アプリ</title>
 <style id="leaflet-css">
 /* required styles */
@@ -764,6 +768,20 @@ html,body{
 }
 #addModeHint.show{ opacity:1; transform:translateX(-50%) translateY(-4px); }
 
+#gpsAddBtn{
+  position:absolute; right:18px; bottom:calc(96px + env(safe-area-inset-bottom));
+  z-index:1000; width:48px; height:48px; border-radius:50%;
+  background:var(--panel-bg); border:1px solid var(--panel-border);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  color:var(--text-primary); font-size:19px; display:flex; align-items:center; justify-content:center;
+  box-shadow:0 4px 14px rgba(0,0,0,0.3);
+  cursor:pointer; transition: transform .12s, background .2s;
+}
+#gpsAddBtn:active{ transform:scale(0.9); }
+#gpsAddBtn.busy{ opacity:0.6; }
+#gpsAddBtn.busy .gps-icon{ animation: gps-pulse 1s infinite ease-in-out; }
+@keyframes gps-pulse{ 0%,100%{ opacity:1; } 50%{ opacity:0.35; } }
+
 /* -------- panels (slide sheets) -------- */
 .sheet-backdrop{
   position:absolute; inset:0; z-index:1900; background:rgba(5,7,10,0.45);
@@ -987,6 +1005,7 @@ html,body{
 </div>
 
 <div id="addModeHint">地図をタップして地点を追加</div>
+<button id="gpsAddBtn" title="現在地に追加"><span class="gps-icon">📍</span></button>
 <button id="addModeBtn" title="地点を追加">+</button>
 
 <div id="statusbar">
@@ -1327,7 +1346,7 @@ html,body{
   <ul class="help-list">
     <li><span class="num">1</span><span>指で地図をドラッグして移動、ピンチで拡大・縮小できます。</span></li>
     <li><span class="num">2</span><span>右上の ⬇ ボタンで、今表示している範囲の航空写真をこの端末に保存できます。保存後はネット接続がなくても表示されます。</span></li>
-    <li><span class="num">3</span><span>右下の ＋ ボタンを押してから地図をタップすると、「屋根マーク調べ」か「セミのぬけがら調べ」かを選ぶ画面が出ます。</span></li>
+    <li><span class="num">3</span><span>右下の ＋ ボタンを押してから地図をタップすると、「屋根マーク調べ」か「セミのぬけがら調べ」かを選ぶ画面が出ます。📍 ボタンを押すと、地図をタップしなくても今いる場所（GPS）に自動で配置されます。</span></li>
     <li><span class="num">4</span><span>手書き欄は指やApple Pencilで直接書き込めます。「写真を撮る」ボタンでカメラが起動し、撮影した写真もその地点の情報として保存されます。</span></li>
     <li><span class="num">4-2</span><span>方角や色などのボタン項目は、複数タップして選ぶこともできます（もう一度タップで選択解除）。</span></li>
     <li><span class="num">5</span><span>地図上のマーカーをタップすると内容の確認・編集・削除ができます。</span></li>
@@ -1860,6 +1879,40 @@ map.on("click", (e) => {
 document.getElementById("cancelTypeBtn").addEventListener("click", closeSheets);
 document.getElementById("chooseYane").addEventListener("click", () => openPointForm("yane", null));
 document.getElementById("chooseSemi").addEventListener("click", () => openPointForm("semi", null));
+
+/* ---------- GPSで現在地に配置 ---------- */
+const gpsAddBtn = document.getElementById("gpsAddBtn");
+gpsAddBtn.addEventListener("click", () => {
+  if(!("geolocation" in navigator)){
+    toast("この端末では位置情報が使えません", true);
+    return;
+  }
+  gpsAddBtn.classList.add("busy");
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      gpsAddBtn.classList.remove("busy");
+      const { latitude, longitude, accuracy } = pos.coords;
+      pendingLatLng = { lat: latitude, lng: longitude };
+      map.setView([latitude, longitude], Math.max(map.getZoom(), 18));
+      addMode = false; addModeBtn.classList.remove("active"); addModeHint.classList.remove("show");
+      if(accuracy && accuracy > 30){
+        toast(`現在地を取得しました（誤差 約${Math.round(accuracy)}m）`);
+      } else {
+        toast("現在地を取得しました");
+      }
+      openSheet(document.getElementById("typeSheet"));
+    },
+    (err) => {
+      gpsAddBtn.classList.remove("busy");
+      let msg = "現在地を取得できませんでした";
+      if(err.code === err.PERMISSION_DENIED) msg = "位置情報の利用が許可されていません。設定アプリでSafariの位置情報を「許可」にしてください";
+      else if(err.code === err.TIMEOUT) msg = "現在地の取得がタイムアウトしました。電波の良い場所でもう一度お試しください";
+      else if(err.code === err.POSITION_UNAVAILABLE) msg = "現在地を特定できませんでした";
+      toast(msg, true);
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+});
 
 async function nextNumber(type){
   const points = await idbGetAll("points");
