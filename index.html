@@ -793,60 +793,49 @@ html,body{
 .sheet{
   position:absolute; left:0; right:0; bottom:0; z-index:2000;
   background:var(--panel-bg-solid); border-top:1px solid var(--panel-border);
-  border-radius:20px 20px 0 0; padding:14px 18px calc(20px + env(safe-area-inset-bottom));
+  border-radius:16px 16px 0 0; padding:10px 14px calc(14px + env(safe-area-inset-bottom));
   transform:translateY(105%); transition: transform .28s cubic-bezier(.32,.72,0,1);
-  max-height:86vh; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  max-height:88vh; overflow-y:auto; -webkit-overflow-scrolling:touch;
   box-shadow:0 -10px 40px rgba(0,0,0,0.5);
 }
 .sheet.show{ transform:translateY(0); }
-.sheet .grabber{ width:38px; height:4px; border-radius:2px; background:var(--panel-border); margin:0 auto 14px; }
-.sheet h2{ font-size:17px; margin:0 0 4px; font-weight:700; }
-.sheet .sub{ font-size:12.5px; color:var(--text-secondary); margin:0 0 16px; line-height:1.5; }
+.sheet .grabber{ width:34px; height:4px; border-radius:2px; background:var(--panel-border); margin:0 auto 8px; }
+.sheet h2{ font-size:15.5px; margin:0 0 3px; font-weight:700; }
+.sheet .sub{ font-size:11.5px; color:var(--text-secondary); margin:0 0 10px; line-height:1.4; }
 
-.field{ margin-bottom:16px; }
-.field label{ display:flex; align-items:center; justify-content:space-between; font-size:12px; color:var(--text-secondary); margin-bottom:6px; font-weight:600; letter-spacing:.02em; }
+.field{ margin-bottom:9px; }
+.field label{ display:flex; align-items:center; justify-content:space-between; font-size:11px; color:var(--text-secondary); margin-bottom:3px; font-weight:600; letter-spacing:.02em; }
 .field .unit-row{ display:flex; align-items:center; gap:8px; }
 .field .unit-row input{ flex:1; }
-.field .unit-row .unit{ font-size:13px; color:var(--text-secondary); }
+.field .unit-row .unit{ font-size:12px; color:var(--text-secondary); }
 .field input[type=text], .field textarea, .field input[type=number]{
   width:100%; background:#181e28; border:1px solid var(--panel-border); border-radius:var(--radius-sm);
-  color:var(--text-primary); font-size:15px; padding:11px 12px; font-family:var(--font-ui);
+  color:var(--text-primary); font-size:14px; padding:8px 10px; font-family:var(--font-ui);
 }
-.field textarea{ min-height:60px; resize:vertical; }
+.field textarea{ min-height:44px; resize:vertical; }
 .field input:focus, .field textarea:focus{ outline:none; border-color:var(--accent); }
 
+/* two-column layout to cut down on scrolling */
+.field-row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:9px; }
+.field-row .field{ margin-bottom:0; }
+
 /* choice button groups */
-.choice-row{ display:flex; gap:8px; flex-wrap:wrap; }
+.choice-row{ display:flex; gap:6px; flex-wrap:wrap; }
 .choice-btn{
-  padding:10px 14px; border-radius:999px; border:1px solid var(--panel-border);
-  background:#181e28; color:var(--text-primary); font-size:14px; font-weight:600;
+  padding:7px 12px; border-radius:999px; border:1px solid var(--panel-border);
+  background:#181e28; color:var(--text-primary); font-size:13px; font-weight:600;
   cursor:pointer; font-family:var(--font-ui); transition:background .15s, border-color .15s, transform .1s;
 }
 .choice-btn:active{ transform:scale(0.95); }
 .choice-btn.selected{ background:var(--accent); border-color:var(--accent); color:#1a0e0a; }
 .choice-btn.selected.semi-selected{ background:var(--semi); border-color:var(--semi); color:#0a1f11; }
-.choice-btn.color-btn{ display:flex; align-items:center; gap:7px; }
-.choice-btn.color-btn .cdot{ width:12px; height:12px; border-radius:50%; border:1px solid rgba(255,255,255,0.5); }
+.choice-btn.color-btn{ display:flex; align-items:center; gap:6px; }
+.choice-btn.color-btn .cdot{ width:11px; height:11px; border-radius:50%; border:1px solid rgba(255,255,255,0.5); }
 .choice-btn.color-btn.selected .cdot{ border-color:#1a0e0a; }
 
-/* sketch / handwriting pad */
-.sketch-pad-wrap{
-  border:1px solid var(--panel-border); border-radius:var(--radius-sm); overflow:hidden;
-  background:#F5F1E8; position:relative; touch-action:none;
-}
-.sketch-pad-wrap canvas{ display:block; width:100%; touch-action:none; }
-.sketch-toolbar{
-  position:absolute; top:6px; right:6px; display:flex; gap:6px; z-index:2;
-}
-.sketch-toolbar button{
-  background:rgba(15,20,28,0.75); color:#fff; border:none; border-radius:8px;
-  font-size:11px; padding:6px 9px; font-weight:600; cursor:pointer; font-family:var(--font-ui);
-}
-.sketch-hint{ position:absolute; left:8px; bottom:6px; font-size:10.5px; color:#9a9482; z-index:1; pointer-events:none; }
-
-.btn-row{ display:flex; gap:10px; margin-top:6px; }
+.btn-row{ display:flex; gap:8px; margin-top:4px; }
 .btn{
-  flex:1; padding:13px; border-radius:var(--radius-sm); border:none; font-size:15px; font-weight:700;
+  flex:1; padding:11px; border-radius:var(--radius-sm); border:none; font-size:14.5px; font-weight:700;
   cursor:pointer; font-family:var(--font-ui); transition:opacity .15s, transform .1s;
 }
 .btn:active{ transform:scale(0.97); }
@@ -858,17 +847,17 @@ html,body{
 
 /* type chooser sheet */
 .type-choice{
-  display:flex; flex-direction:column; gap:12px; margin-top:6px;
+  display:flex; flex-direction:column; gap:10px; margin-top:4px;
 }
 .type-card{
-  display:flex; align-items:center; gap:14px; padding:18px; border-radius:var(--radius);
+  display:flex; align-items:center; gap:12px; padding:14px; border-radius:var(--radius);
   border:1px solid var(--panel-border); background:#181e28; cursor:pointer;
   transition:transform .12s, border-color .15s, background .15s;
 }
 .type-card:active{ transform:scale(0.97); }
-.type-card .emoji{ font-size:30px; width:46px; text-align:center; }
-.type-card .txt .ttl{ font-size:15.5px; font-weight:700; margin-bottom:2px; }
-.type-card .txt .desc{ font-size:12px; color:var(--text-secondary); }
+.type-card .emoji{ font-size:27px; width:40px; text-align:center; }
+.type-card .txt .ttl{ font-size:14.5px; font-weight:700; margin-bottom:2px; }
+.type-card .txt .desc{ font-size:11.5px; color:var(--text-secondary); }
 .type-card.yane:active, .type-card.yane.hover{ border-color:var(--accent); }
 .type-card.semi:active, .type-card.semi.hover{ border-color:var(--semi); }
 
@@ -879,39 +868,39 @@ html,body{
 
 .tile-estimate{
   background:#181e28; border:1px solid var(--panel-border); border-radius:var(--radius-sm);
-  padding:12px 14px; font-size:13px; color:var(--text-secondary); margin-bottom:14px; line-height:1.6;
+  padding:10px 12px; font-size:12.5px; color:var(--text-secondary); margin-bottom:10px; line-height:1.5;
 }
 .tile-estimate b{ color:var(--text-primary); font-family:var(--font-mono); }
 .tile-estimate.warn b{ color:var(--warn); }
 
-.progress-wrap{ margin:14px 0 6px; }
+.progress-wrap{ margin:10px 0 4px; }
 .progress-track{ height:8px; border-radius:4px; background:#181e28; overflow:hidden; }
 .progress-fill{ height:100%; width:0%; background:var(--accent); transition:width .15s; }
 .progress-label{ display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:12px; color:var(--text-secondary); margin-top:6px; }
 
 /* points list */
-.list-tabs{ display:flex; gap:8px; margin-bottom:12px; }
+.list-tabs{ display:flex; gap:8px; margin-bottom:10px; }
 .list-tab{
-  flex:1; text-align:center; padding:9px 6px; border-radius:999px; border:1px solid var(--panel-border);
-  background:#181e28; color:var(--text-secondary); font-size:12.5px; font-weight:700; cursor:pointer;
+  flex:1; text-align:center; padding:8px 6px; border-radius:999px; border:1px solid var(--panel-border);
+  background:#181e28; color:var(--text-secondary); font-size:12px; font-weight:700; cursor:pointer;
 }
 .list-tab.active{ background:var(--text-primary); color:#0f141c; border-color:var(--text-primary); }
 .point-item{
-  display:flex; align-items:center; gap:12px; padding:12px 4px; border-bottom:1px solid var(--panel-border);
+  display:flex; align-items:center; gap:10px; padding:9px 4px; border-bottom:1px solid var(--panel-border);
   cursor:pointer;
 }
 .point-item .num-badge{
-  width:30px; height:30px; border-radius:8px; background:#181e28; color:var(--text-primary);
-  font-family:var(--font-mono); font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center;
+  width:28px; height:28px; border-radius:7px; background:#181e28; color:var(--text-primary);
+  font-family:var(--font-mono); font-size:11.5px; font-weight:700; display:flex; align-items:center; justify-content:center;
   flex-shrink:0; border:1px solid var(--panel-border);
 }
-.point-item .dot{ width:12px; height:12px; border-radius:50%; flex-shrink:0; border:1px solid rgba(255,255,255,0.3); }
+.point-item .dot{ width:11px; height:11px; border-radius:50%; flex-shrink:0; border:1px solid rgba(255,255,255,0.3); }
 .point-item .dot.square{ border-radius:3px; }
 .point-item .info{ flex:1; min-width:0; }
-.point-item .info .name{ font-size:14.5px; font-weight:600; }
-.point-item .info .meta{ font-size:11.5px; color:var(--text-secondary); font-family:var(--font-mono); margin-top:2px; }
+.point-item .info .name{ font-size:14px; font-weight:600; }
+.point-item .info .meta{ font-size:11px; color:var(--text-secondary); font-family:var(--font-mono); margin-top:1px; }
 .point-item .chev{ color:var(--text-secondary); font-size:18px; }
-.empty-state{ text-align:center; padding:36px 10px; color:var(--text-secondary); font-size:13.5px; line-height:1.7; }
+.empty-state{ text-align:center; padding:30px 10px; color:var(--text-secondary); font-size:13px; line-height:1.6; }
 
 /* toast */
 #toast{
@@ -943,7 +932,6 @@ html,body{
 .leaflet-popup-content .ptable{ font-size:12.5px; line-height:1.7; margin-bottom:8px; }
 .leaflet-popup-content .ptable .r{ display:flex; gap:6px; }
 .leaflet-popup-content .ptable .k{ color:var(--text-secondary); flex-shrink:0; width:74px; }
-.leaflet-popup-content .psketch{ width:100%; border-radius:8px; margin-bottom:6px; background:#F5F1E8; display:block; }
 .leaflet-popup-content .pphoto{ width:100%; border-radius:8px; margin-bottom:6px; display:block; }
 .leaflet-popup-content .prow{ display:flex; gap:8px; margin-top:6px; }
 .leaflet-popup-content .plink{ font-size:12.5px; font-weight:700; color:var(--accent); cursor:pointer; }
@@ -961,9 +949,9 @@ html,body{
 .sync-status.err b{ color:var(--danger); }
 
 .photo-preview{ border:1px solid var(--panel-border); border-radius:var(--radius-sm); overflow:hidden; background:#181e28; }
-.photo-preview img{ width:100%; display:block; max-height:280px; object-fit:cover; background:#000; }
-.photo-actions{ display:flex; gap:8px; padding:10px; }
-.photo-actions .btn{ padding:10px; font-size:13.5px; }
+.photo-preview img{ width:100%; display:block; max-height:200px; object-fit:cover; background:#000; }
+.photo-actions{ display:flex; gap:8px; padding:8px; }
+.photo-actions .btn{ padding:9px; font-size:12.5px; }
 
 /* crop tool */
 #cropOverlay{
@@ -987,14 +975,14 @@ html,body{
   touch-action:none; cursor:move;
 }
 .crop-handle{
-  position:absolute; width:26px; height:26px; margin:-13px;
+  position:absolute; width:22px; height:22px; margin:-11px;
   background:var(--accent); border:2px solid #1a0e0a; border-radius:50%;
   touch-action:none;
 }
 .crop-handle[data-handle="nw"]{ top:0; left:0; cursor:nwse-resize; }
-.crop-handle[data-handle="ne"]{ top:0; right:0; margin-right:-13px; cursor:nesw-resize; }
-.crop-handle[data-handle="sw"]{ bottom:0; left:0; margin-bottom:-13px; cursor:nesw-resize; }
-.crop-handle[data-handle="se"]{ bottom:0; right:0; margin-right:-13px; margin-bottom:-13px; cursor:nwse-resize; }
+.crop-handle[data-handle="ne"]{ top:0; right:0; margin-right:-11px; cursor:nesw-resize; }
+.crop-handle[data-handle="sw"]{ bottom:0; left:0; margin-bottom:-11px; cursor:nesw-resize; }
+.crop-handle[data-handle="se"]{ bottom:0; right:0; margin-right:-11px; margin-bottom:-11px; cursor:nwse-resize; }
 .crop-bottom{
   flex-shrink:0; display:flex; gap:10px; padding:14px; padding-bottom:calc(14px + env(safe-area-inset-bottom));
 }
@@ -1018,10 +1006,6 @@ html,body{
 #fatalError h3{ font-size:17px; margin:0 0 10px; }
 #fatalError p{ font-size:13.5px; color:var(--text-secondary); line-height:1.7; margin:0 0 14px; }
 #fatalError code{ display:block; background:#181e28; border-radius:8px; padding:10px; font-size:11px; color:#F87171; margin-top:10px; text-align:left; white-space:pre-wrap; word-break:break-all; }
-
-.help-list{ font-size:13.5px; line-height:1.9; color:var(--text-secondary); padding-left:0; list-style:none; margin:0; }
-.help-list li{ display:flex; gap:10px; margin-bottom:10px; }
-.help-list .num{ color:var(--accent); font-family:var(--font-mono); font-weight:700; flex-shrink:0; }
 </style>
 </head>
 <body>
@@ -1038,7 +1022,6 @@ html,body{
   <div class="icon-btn" id="listBtn" title="地点一覧">☰</div>
   <div class="icon-btn" id="syncBtn" title="データを共有">☁</div>
   <div class="icon-btn" id="downloadBtn" title="地図をダウンロード">⬇</div>
-  <div class="icon-btn" id="helpBtn" title="使い方">?</div>
 </div>
 
 <div id="addModeHint">地図をタップして地点を追加</div>
@@ -1125,34 +1108,26 @@ html,body{
   <h2 id="yaneSheetTitle">屋根マーク調べ</h2>
   <p class="sub" id="yaneCoordLabel"></p>
 
-  <div class="field">
-    <label>番号</label>
-    <input type="number" id="fNumber" inputmode="numeric">
-    <p style="font-size:11px; color:var(--text-secondary); margin:6px 0 0;" id="fNumberHint"></p>
-  </div>
-
-  <div class="field">
-    <label>数</label>
-    <input type="number" id="fCount" inputmode="numeric" placeholder="例：1">
-  </div>
-
-  <div class="field">
-    <label>場所（自由記述・手書き）</label>
-    <input type="text" id="fLocationText" placeholder="例：〇〇邸の南側屋根 など" style="margin-bottom:8px;">
-    <div class="sketch-pad-wrap" id="padWrap-location">
-      <div class="sketch-toolbar"><button type="button" data-clear="location">消す</button></div>
-      <canvas id="pad-location" height="130"></canvas>
-      <div class="sketch-hint">指かApple Pencilで書き込めます</div>
+  <div class="field-row">
+    <div class="field">
+      <label>番号</label>
+      <input type="number" id="fNumber" inputmode="numeric">
+    </div>
+    <div class="field">
+      <label>数</label>
+      <input type="number" id="fCount" inputmode="numeric" placeholder="例：1">
     </div>
   </div>
+  <p style="font-size:10.5px; color:var(--text-secondary); margin:-5px 0 9px;" id="fNumberHint"></p>
 
-  <div class="field">
-    <label>マーク（自由記述・手書き）</label>
-    <input type="text" id="fMarkText" placeholder="例：丸に十字 など" style="margin-bottom:8px;">
-    <div class="sketch-pad-wrap" id="padWrap-mark">
-      <div class="sketch-toolbar"><button type="button" data-clear="mark">消す</button></div>
-      <canvas id="pad-mark" height="200"></canvas>
-      <div class="sketch-hint">見えたマークの形をそのまま書き写してください</div>
+  <div class="field-row">
+    <div class="field">
+      <label>場所（自由記述）</label>
+      <input type="text" id="fLocationText" placeholder="例：〇〇邸の南側屋根">
+    </div>
+    <div class="field">
+      <label>マーク（自由記述）</label>
+      <input type="text" id="fMarkText" placeholder="例：丸に十字">
     </div>
   </div>
 
@@ -1212,17 +1187,12 @@ html,body{
       <button type="button" class="choice-btn color-btn" data-value="白"><span class="cdot" style="background:#F8FAFC"></span>白</button>
       <button type="button" class="choice-btn color-btn" data-value="その他"><span class="cdot" style="background:#A78BFA"></span>その他</button>
     </div>
-    <input type="text" id="fColorOther" placeholder="色の名前を入力" style="margin-top:8px; display:none;">
+    <input type="text" id="fColorOther" placeholder="色の名前を入力" style="margin-top:6px; display:none;">
   </div>
 
   <div class="field">
-    <label>その他（自由記述・手書き）</label>
-    <input type="text" id="fOtherText" placeholder="気づいたことなど" style="margin-bottom:8px;">
-    <div class="sketch-pad-wrap" id="padWrap-other">
-      <div class="sketch-toolbar"><button type="button" data-clear="other">消す</button></div>
-      <canvas id="pad-other" height="130"></canvas>
-      <div class="sketch-hint">指かApple Pencilで書き込めます</div>
-    </div>
+    <label>その他（自由記述）</label>
+    <input type="text" id="fOtherText" placeholder="気づいたことなど">
   </div>
 
   <div class="btn-row">
@@ -1238,32 +1208,26 @@ html,body{
   <h2 id="semiSheetTitle">セミのぬけがら調べ</h2>
   <p class="sub" id="semiCoordLabel"></p>
 
-  <div class="field">
-    <label>番号</label>
-    <input type="number" id="sNumber" inputmode="numeric">
-    <p style="font-size:11px; color:var(--text-secondary); margin:6px 0 0;" id="sNumberHint"></p>
-  </div>
-
-  <div class="field">
-    <label>数</label>
-    <input type="number" id="sCount" inputmode="numeric" placeholder="例：1">
-  </div>
-
-  <div class="field">
-    <label>場所（手書き）</label>
-    <div class="sketch-pad-wrap" id="padWrap-semiLocation">
-      <div class="sketch-toolbar"><button type="button" data-clear="semiLocation">消す</button></div>
-      <canvas id="pad-semiLocation" height="130"></canvas>
-      <div class="sketch-hint">指かApple Pencilで書き込めます</div>
+  <div class="field-row">
+    <div class="field">
+      <label>番号</label>
+      <input type="number" id="sNumber" inputmode="numeric">
+    </div>
+    <div class="field">
+      <label>数</label>
+      <input type="number" id="sCount" inputmode="numeric" placeholder="例：1">
     </div>
   </div>
+  <p style="font-size:10.5px; color:var(--text-secondary); margin:-5px 0 9px;" id="sNumberHint"></p>
 
-  <div class="field">
-    <label>木の種類（手書き）</label>
-    <div class="sketch-pad-wrap" id="padWrap-semiTree">
-      <div class="sketch-toolbar"><button type="button" data-clear="semiTree">消す</button></div>
-      <canvas id="pad-semiTree" height="130"></canvas>
-      <div class="sketch-hint">指かApple Pencilで書き込めます</div>
+  <div class="field-row">
+    <div class="field">
+      <label>場所（自由記述）</label>
+      <input type="text" id="sLocationText" placeholder="例：校庭の桜の木の幹">
+    </div>
+    <div class="field">
+      <label>木の種類（自由記述）</label>
+      <input type="text" id="sTreeText" placeholder="例：サクラ">
     </div>
   </div>
 
@@ -1317,19 +1281,20 @@ html,body{
     </div>
   </div>
 
-  <div class="field">
-    <label>高さ</label>
-    <div class="unit-row">
-      <input type="number" id="sHeight" inputmode="decimal" placeholder="例：120">
-      <span class="unit">cm</span>
+  <div class="field-row">
+    <div class="field">
+      <label>高さ</label>
+      <div class="unit-row">
+        <input type="number" id="sHeight" inputmode="decimal" placeholder="例：120">
+        <span class="unit">cm</span>
+      </div>
     </div>
-  </div>
-
-  <div class="field">
-    <label>木の太さ</label>
-    <div class="unit-row">
-      <input type="number" id="sThickness" inputmode="decimal" placeholder="例：30">
-      <span class="unit">cm</span>
+    <div class="field">
+      <label>木の太さ</label>
+      <div class="unit-row">
+        <input type="number" id="sThickness" inputmode="decimal" placeholder="例：30">
+        <span class="unit">cm</span>
+      </div>
     </div>
   </div>
 
@@ -1397,26 +1362,6 @@ html,body{
   </div>
 </div>
 
-<!-- Help sheet -->
-<div class="sheet" id="helpSheet">
-  <div class="grabber"></div>
-  <h2>使い方</h2>
-  <ul class="help-list">
-    <li><span class="num">1</span><span>指で地図をドラッグして移動、ピンチで拡大・縮小できます。</span></li>
-    <li><span class="num">2</span><span>右上の ⬇ ボタンで、今表示している範囲の航空写真をこの端末に保存できます。保存後はネット接続がなくても表示されます。</span></li>
-    <li><span class="num">3</span><span>右下の ＋ ボタンを押してから地図をタップすると、「屋根マーク調べ」か「セミのぬけがら調べ」かを選ぶ画面が出ます。📍 ボタンを押すと、地図をタップしなくても今いる場所（GPS）に自動で配置されます。</span></li>
-    <li><span class="num">4</span><span>手書き欄は指やApple Pencilで直接書き込めます。「写真を撮る」ボタンでカメラが起動し、撮影した写真もその地点の情報として保存されます。</span></li>
-    <li><span class="num">4-2</span><span>方角や色などのボタン項目は、複数タップして選ぶこともできます（もう一度タップで選択解除）。</span></li>
-    <li><span class="num">5</span><span>地図上のマーカーをタップすると内容の確認・編集・削除ができます。</span></li>
-    <li><span class="num">6</span><span>左上の ☰ ボタンで登録した地点の一覧（種類ごとの絞り込みつき）を確認し、GeoJSON形式で書き出せます。</span></li>
-    <li><span class="num">6-2</span><span>☁ ボタンで、Wi-Fi接続時に複数の端末どうしでデータを共有できます。同じ「グループ名」を入れた端末どうしがつながります。</span></li>
-    <li><span class="num">7</span><span>Safariの共有メニューから「ホーム画面に追加」しておくと、アプリのように起動できます。</span></li>
-  </ul>
-  <div class="btn-row" style="margin-top:16px;">
-    <button class="btn btn-primary btn-full" id="closeHelpBtn">閉じる</button>
-  </div>
-</div>
-
 <script>
 window.addEventListener("error", function(e){
   var el = document.getElementById("fatalError");
@@ -1444,6 +1389,8 @@ window.addEventListener("error", function(e){
 const DEFAULT_CENTER = [34.948894, 137.131073];
 const DEFAULT_ZOOM = 16;
 const GSI_URL = (z,x,y) => `https://cyberjapandata.gsi.go.jp/xyz/ort/${z}/${x}/${y}.jpg`;
+const NATIVE_MAX_ZOOM = 18; // GSIオルソ画像タイルの最大精細度
+const MAP_MAX_ZOOM = 21;    // これより上は上の階層のタイルを拡大表示（家屋一軒ずつ確認できる程度）
 const COLOR_HEX = { "黒":"#1F2430", "緑":"#22C55E", "青":"#3B82F6", "赤":"#EF4444", "白":"#F8FAFC", "その他":"#A78BFA" };
 const SEMI_HEX = "#22C55E";
 
@@ -1522,43 +1469,71 @@ function toast(msg, isErr){
 const map = L.map("map", {
   zoomControl: false,
   attributionControl: false,
-  maxZoom: 18,
+  maxZoom: MAP_MAX_ZOOM,
   minZoom: 5,
 }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
 
 L.control.zoom({ position: "bottomright" }).addTo(map);
 
+/*
+ * 地理院タイルはズーム18までしか無いため、それより拡大したいときは
+ * 18の親タイルの一部分を切り出して拡大表示する（家屋一軒ずつ見えるところまでズーム可能）。
+ */
 const OfflineTileLayer = L.GridLayer.extend({
   createTile: function(coord, done){
-    const tile = document.createElement("img");
-    tile.alt = "";
-    tile.style.width = "256px";
-    tile.style.height = "256px";
+    const wrapper = document.createElement("div");
+    wrapper.style.width = "256px";
+    wrapper.style.height = "256px";
+    wrapper.style.overflow = "hidden";
+    wrapper.style.position = "relative";
+
     const z = coord.z;
     const size = Math.pow(2, z);
     let x = coord.x % size; if(x < 0) x += size;
     const y = coord.y;
     if(y < 0 || y >= size){
-      done(null, tile);
-      return tile;
+      done(null, wrapper);
+      return wrapper;
     }
-    const key = `${z}/${x}/${y}`;
+
+    let nz = z, nx = x, ny = y, factor = 1, offX = 0, offY = 0;
+    if(z > NATIVE_MAX_ZOOM){
+      factor = Math.pow(2, z - NATIVE_MAX_ZOOM);
+      nz = NATIVE_MAX_ZOOM;
+      nx = Math.floor(x / factor);
+      ny = Math.floor(y / factor);
+      offX = x % factor;
+      offY = y % factor;
+    }
+
+    const tile = document.createElement("img");
+    tile.alt = "";
+    const dispSize = 256 * factor;
+    tile.style.width = dispSize + "px";
+    tile.style.height = dispSize + "px";
+    tile.style.position = "absolute";
+    tile.style.left = (-offX * 256) + "px";
+    tile.style.top = (-offY * 256) + "px";
+
+    const key = `${nz}/${nx}/${ny}`;
     idbGet("tiles", key).then(blob => {
       if(blob){
         const url = URL.createObjectURL(blob);
-        tile.onload = () => { URL.revokeObjectURL(url); done(null, tile); };
-        tile.onerror = () => done(null, tile);
+        tile.onload = () => { URL.revokeObjectURL(url); done(null, wrapper); };
+        tile.onerror = () => done(null, wrapper);
         tile.src = url;
       } else if(navigator.onLine){
         tile.crossOrigin = "anonymous";
-        tile.onload = () => done(null, tile);
-        tile.onerror = () => done(null, tile);
-        tile.src = GSI_URL(z, x, y);
+        tile.onload = () => done(null, wrapper);
+        tile.onerror = () => done(null, wrapper);
+        tile.src = GSI_URL(nz, nx, ny);
       } else {
-        done(null, tile);
+        done(null, wrapper);
       }
-    }).catch(() => { done(null, tile); });
-    return tile;
+    }).catch(() => { done(null, wrapper); });
+
+    wrapper.appendChild(tile);
+    return wrapper;
   }
 });
 const tileLayer = new OfflineTileLayer({ tileSize: 256, updateWhenIdle: true, keepBuffer: 2 });
@@ -1592,7 +1567,7 @@ refreshCacheStatus();
 
 /* ============== sheet helpers ============== */
 const backdrop = document.getElementById("backdrop");
-const sheets = ["typeSheet","downloadSheet","pointSheetYane","pointSheetSemi","listSheet","helpSheet","syncSheet"].map(id => document.getElementById(id));
+const sheets = ["typeSheet","downloadSheet","pointSheetYane","pointSheetSemi","listSheet","syncSheet"].map(id => document.getElementById(id));
 function openSheet(sheet){
   sheets.forEach(s => { if(s !== sheet) s.classList.remove("show"); });
   sheet.classList.add("show");
@@ -1737,88 +1712,6 @@ document.getElementById("startDlBtn").addEventListener("click", () => {
   runDownload();
 });
 
-/* ============== sketch pads (handwriting canvases) ============== */
-const sketchPads = {};
-function initSketchPad(name){
-  const canvas = document.getElementById("pad-" + name);
-  const ctx = canvas.getContext("2d");
-  let drawing = false;
-  let last = null;
-
-  function resize(){
-    const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    ctx.setTransform(dpr,0,0,dpr,0,0);
-    ctx.fillStyle = "#F5F1E8";
-    ctx.fillRect(0,0,rect.width,rect.height);
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.strokeStyle = "#1F2430";
-    ctx.lineWidth = 2.6;
-  }
-  function pos(e){
-    const rect = canvas.getBoundingClientRect();
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
-  }
-  function start(e){
-    drawing = true;
-    last = pos(e);
-    canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId);
-  }
-  function move(e){
-    if(!drawing) return;
-    e.preventDefault();
-    const p = pos(e);
-    ctx.beginPath();
-    ctx.moveTo(last.x, last.y);
-    ctx.lineTo(p.x, p.y);
-    ctx.stroke();
-    last = p;
-  }
-  function end(){ drawing = false; last = null; }
-
-  canvas.addEventListener("pointerdown", start);
-  canvas.addEventListener("pointermove", move);
-  canvas.addEventListener("pointerup", end);
-  canvas.addEventListener("pointerleave", end);
-  canvas.addEventListener("pointercancel", end);
-
-  requestAnimationFrame(resize);
-
-  const pad = {
-    clear(){ resize(); },
-    isBlank(){
-      const tmp = document.createElement("canvas");
-      tmp.width = canvas.width; tmp.height = canvas.height;
-      const tctx = tmp.getContext("2d");
-      tctx.fillStyle = "#F5F1E8";
-      tctx.fillRect(0,0,tmp.width,tmp.height);
-      return canvas.toDataURL() === tmp.toDataURL();
-    },
-    toDataURL(){ return pad.isBlank() ? null : canvas.toDataURL("image/png"); },
-    loadDataURL(dataUrl){
-      resize();
-      if(!dataUrl) return;
-      const img = new Image();
-      img.onload = () => {
-        const rect = canvas.getBoundingClientRect();
-        ctx.drawImage(img, 0, 0, rect.width, rect.height);
-      };
-      img.src = dataUrl;
-    },
-  };
-  sketchPads[name] = pad;
-}
-["location","mark","other","semiLocation","semiTree"].forEach(initSketchPad);
-document.querySelectorAll("[data-clear]").forEach(btn => {
-  btn.addEventListener("click", () => {
-    const name = btn.getAttribute("data-clear");
-    sketchPads[name].clear();
-  });
-});
-
 /* ============== photo capture (reusable per form) ============== */
 function compressImageFile(file, maxDim, quality){
   return new Promise((resolve, reject) => {
@@ -1851,7 +1744,7 @@ function openCropTool(dataUrl){
     const img = document.getElementById("cropImg");
     const box = document.getElementById("cropBox");
     const stage = document.getElementById("cropStage");
-    const MIN_SIZE = 44;
+    const MIN_SIZE = 16; // これより小さくトリミングできないようにする下限（狭い範囲まで切り出せるように縮小）
 
     function stageLocalRect(el){
       const r = el.getBoundingClientRect();
@@ -2147,9 +2040,6 @@ async function openPointForm(type, existing){
         document.getElementById("fColorOther").value = existing.colorOther || "";
       }
     }
-    sketchPads.location.loadDataURL(existing && existing.location ? existing.location.sketch : null);
-    sketchPads.mark.loadDataURL(existing && existing.mark ? existing.mark.sketch : null);
-    sketchPads.other.loadDataURL(existing && existing.other ? existing.other.sketch : null);
     photoYane.show(existing && existing.photo ? existing.photo : null);
     document.getElementById("deleteYaneBtn").style.display = existing ? "block" : "none";
     openSheet(document.getElementById("pointSheetYane"));
@@ -2167,6 +2057,8 @@ async function openPointForm(type, existing){
         : "この端末だけの仮の番号です（共有設定がオフ、または未接続）";
     }
     document.getElementById("sCount").value = existing ? (existing.count || "") : "";
+    document.getElementById("sLocationText").value = existing ? (existing.location && existing.location.text) || "" : "";
+    document.getElementById("sTreeText").value = existing ? (existing.treeType && existing.treeType.text) || "" : "";
     document.getElementById("sHeight").value = existing ? (existing.height || "") : "";
     document.getElementById("sThickness").value = existing ? (existing.thickness || "") : "";
     ["semiSpecies","semiPart","semiDirection","semiGround"].forEach(f => resetChoiceRow(f));
@@ -2176,8 +2068,6 @@ async function openPointForm(type, existing){
       applyChoiceRow("semiDirection", existing.semiDirection);
       applyChoiceRow("semiGround", existing.semiGround);
     }
-    sketchPads.semiLocation.loadDataURL(existing && existing.location ? existing.location.sketch : null);
-    sketchPads.semiTree.loadDataURL(existing && existing.treeType ? existing.treeType.sketch : null);
     photoSemi.show(existing && existing.photo ? existing.photo : null);
     document.getElementById("deleteSemiBtn").style.display = existing ? "block" : "none";
     openSheet(document.getElementById("pointSheetSemi"));
@@ -2194,15 +2084,15 @@ document.getElementById("saveYaneBtn").addEventListener("click", async () => {
     lat: pendingLatLng.lat, lng: pendingLatLng.lng,
     number: document.getElementById("fNumber").value.trim(),
     count: document.getElementById("fCount").value.trim(),
-    location: { text: document.getElementById("fLocationText").value.trim(), sketch: sketchPads.location.toDataURL() },
-    mark: { text: document.getElementById("fMarkText").value.trim(), sketch: sketchPads.mark.toDataURL() },
+    location: { text: document.getElementById("fLocationText").value.trim() },
+    mark: { text: document.getElementById("fMarkText").value.trim() },
     photo: photoYane.getValue(),
     direction: formState.direction,
     entranceSide: formState.entranceSide,
     houseType: formState.houseType,
     color: formState.color,
     colorOther: formState.color.split(CHOICE_SEP).includes("その他") ? document.getElementById("fColorOther").value.trim() : "",
-    other: { text: document.getElementById("fOtherText").value.trim(), sketch: sketchPads.other.toDataURL() },
+    other: { text: document.getElementById("fOtherText").value.trim() },
     updatedAt: new Date().toISOString(),
   };
   await commitPoint(point);
@@ -2215,8 +2105,8 @@ document.getElementById("saveSemiBtn").addEventListener("click", async () => {
     lat: pendingLatLng.lat, lng: pendingLatLng.lng,
     number: document.getElementById("sNumber").value.trim(),
     count: document.getElementById("sCount").value.trim(),
-    location: { sketch: sketchPads.semiLocation.toDataURL() },
-    treeType: { sketch: sketchPads.semiTree.toDataURL() },
+    location: { text: document.getElementById("sLocationText").value.trim() },
+    treeType: { text: document.getElementById("sTreeText").value.trim() },
     photo: photoSemi.getValue(),
     semiSpecies: formState.semiSpecies,
     semiPart: formState.semiPart,
@@ -2304,11 +2194,10 @@ function buildPopupHtml(p){
       ["木の太さ", p.thickness ? p.thickness + " cm" : ""],
       ["地面", p.semiGround],
     ].filter(r => r[1]);
-    let html = `<div class="pname">No.${escapeHtml(String(p.number||"—"))}</div>`;
+    let html = `<div class="pname">No.${escapeHtml(String(p.number||"—"))} ${p.location && p.location.text ? "・ " + escapeHtml(p.location.text) : ""}</div>`;
     html += `<div class="ptype">セミのぬけがら調べ</div>`;
     if(p.photo) html += `<img class="pphoto" src="${p.photo}">`;
-    if(p.location && p.location.sketch) html += `<div class="ptable"><div class="r"><span class="k">場所</span></div></div><img class="psketch" src="${p.location.sketch}">`;
-    if(p.treeType && p.treeType.sketch) html += `<div class="ptable"><div class="r"><span class="k">木の種類</span></div></div><img class="psketch" src="${p.treeType.sketch}">`;
+    if(p.treeType && p.treeType.text) html += `<div class="ptable"><div class="r"><span class="k">木の種類</span><span>${escapeHtml(p.treeType.text)}</span></div></div>`;
     html += `<div class="ptable">` + rows.map(r => `<div class="r"><span class="k">${r[0]}</span><span>${escapeHtml(r[1])}</span></div>`).join("") + `</div>`;
     html += `<div class="prow"><span class="plink" data-edit="1">編集</span><span class="plink del" data-del="1">削除</span></div>`;
     return html;
@@ -2327,11 +2216,9 @@ function buildPopupHtml(p){
   html += `<div class="ptype">屋根マーク調べ</div>`;
   html += `<div class="ptable">` + rows.map(r => `<div class="r"><span class="k">${r[0]}</span><span>${escapeHtml(r[1])}</span></div>`).join("") + `</div>`;
   if(p.photo) html += `<img class="pphoto" src="${p.photo}">`;
-  if(p.mark && p.mark.sketch) html += `<img class="psketch" src="${p.mark.sketch}">`;
-  else if(p.mark && p.mark.text) html += `<div class="ptable"><div class="r"><span class="k">マーク</span><span>${escapeHtml(p.mark.text)}</span></div></div>`;
-  if(p.other && (p.other.text || p.other.sketch)){
-    if(p.other.text) html += `<div class="ptable"><div class="r"><span class="k">その他</span><span>${escapeHtml(p.other.text)}</span></div></div>`;
-    if(p.other.sketch) html += `<img class="psketch" src="${p.other.sketch}">`;
+  if(p.mark && p.mark.text) html += `<div class="ptable"><div class="r"><span class="k">マーク</span><span>${escapeHtml(p.mark.text)}</span></div></div>`;
+  if(p.other && p.other.text){
+    html += `<div class="ptable"><div class="r"><span class="k">その他</span><span>${escapeHtml(p.other.text)}</span></div></div>`;
   }
   html += `<div class="prow"><span class="plink" data-edit="1">編集</span><span class="plink del" data-del="1">削除</span></div>`;
   return html;
@@ -2371,12 +2258,11 @@ async function renderPointList(){
     const hex = colorHexOf(p);
     let mainText, metaText, dotClass = "";
     if(p.surveyType === "semi"){
-      mainText = (p.semiSpecies || "セミのぬけがら") + (p.location && p.location.sketch ? "（場所メモあり）" : "");
+      mainText = p.semiSpecies || "セミのぬけがら";
       metaText = [p.semiPart, p.semiDirection].filter(Boolean).join(" ・ ");
       dotClass = "square";
     } else {
-      const locText = (p.location && p.location.text) ? p.location.text : (p.location && p.location.sketch ? "（手書きあり）" : "");
-      mainText = locText || "（場所未入力）";
+      mainText = (p.location && p.location.text) || "（場所未入力）";
       metaText = [p.houseType, p.direction].filter(Boolean).join(" ・ ");
     }
     item.innerHTML = `
@@ -2412,10 +2298,8 @@ document.getElementById("exportBtn").addEventListener("click", async () => {
         count: p.count,
         photo: p.photo,
         location_text: p.location && p.location.text,
-        location_sketch: p.location && p.location.sketch,
         mark_text: p.mark && p.mark.text,
-        mark_sketch: p.mark && p.mark.sketch,
-        treeType_sketch: p.treeType && p.treeType.sketch,
+        treeType_text: p.treeType && p.treeType.text,
         direction: p.direction,
         entranceSide: p.entranceSide,
         houseType: p.houseType,
@@ -2423,7 +2307,6 @@ document.getElementById("exportBtn").addEventListener("click", async () => {
           ? (p.color || "").split("・").map(c => c === "その他" ? (p.colorOther || "その他") : c).join("・")
           : undefined,
         other_text: p.other && p.other.text,
-        other_sketch: p.other && p.other.sketch,
         semiSpecies: p.semiSpecies,
         semiPart: p.semiPart,
         semiDirection: p.semiDirection,
@@ -2447,10 +2330,6 @@ document.getElementById("exportBtn").addEventListener("click", async () => {
   toast("GeoJSONを書き出しました（手書き・写真も含みます）");
 });
 
-/* ============== help ============== */
-document.getElementById("helpBtn").addEventListener("click", () => openSheet(document.getElementById("helpSheet")));
-document.getElementById("closeHelpBtn").addEventListener("click", closeSheets);
-
 document.getElementById("syncBtn").addEventListener("click", () => openSheet(document.getElementById("syncSheet")));
 document.getElementById("closeSyncBtn").addEventListener("click", closeSheets);
 
@@ -2465,9 +2344,6 @@ window.__fieldApp = {
 
 /* ============== init ============== */
 renderAllPoints();
-if(!localStorage.getItem("gsiFieldMap_seenHelp_v3")){
-  setTimeout(() => { openSheet(document.getElementById("helpSheet")); localStorage.setItem("gsiFieldMap_seenHelp_v3","1"); }, 400);
-}
 
 })();
 </script>
@@ -2593,20 +2469,17 @@ pullBtn.addEventListener("click", async () => {
       return;
     }
 
-    /* 画像のファイルIDを集める */
+    /* 写真のファイルIDを集める（手書きは廃止したため写真のみ） */
     const neededIds = [];
-    const imgFields = ["photo_id","location_sketch_id","mark_sketch_id","other_sketch_id","treeType_sketch_id"];
-    toImport.forEach(item => {
-      imgFields.forEach(f => { if(item.remote[f]) neededIds.push(item.remote[f]); });
-    });
+    toImport.forEach(item => { if(item.remote.photo_id) neededIds.push(item.remote.photo_id); });
 
     /* 画像をまとめて取得（5枚ずつ） */
     const imageMap = {};
     const BATCH = 5;
     for(let i = 0; i < neededIds.length; i += BATCH){
       const chunk = neededIds.slice(i, i + BATCH);
-      setStatus(`画像を受け取っています… <b>${Math.min(i + BATCH, neededIds.length)} / ${neededIds.length}</b>枚`);
-      pullBtn.textContent = `画像 ${Math.min(i + BATCH, neededIds.length)}/${neededIds.length}`;
+      setStatus(`写真を受け取っています… <b>${Math.min(i + BATCH, neededIds.length)} / ${neededIds.length}</b>枚`);
+      pullBtn.textContent = `写真 ${Math.min(i + BATCH, neededIds.length)}/${neededIds.length}`;
       const imgUrl = cfg.endpoint + (cfg.endpoint.indexOf("?") >= 0 ? "&" : "?") +
         "action=images&ids=" + encodeURIComponent(chunk.join(","));
       try{
@@ -2630,21 +2503,10 @@ pullBtn.addEventListener("click", async () => {
         createdAt: r.createdAt,
         updatedAt: r.updatedAt,
         photo: imageMap[r.photo_id] || null,
-        location: {
-          text: r.location_text || "",
-          sketch: imageMap[r.location_sketch_id] || null,
-        },
-        mark: {
-          text: r.mark_text || "",
-          sketch: imageMap[r.mark_sketch_id] || null,
-        },
-        other: {
-          text: r.other_text || "",
-          sketch: imageMap[r.other_sketch_id] || null,
-        },
-        treeType: {
-          sketch: imageMap[r.treeType_sketch_id] || null,
-        },
+        location: { text: r.location_text || "" },
+        mark: { text: r.mark_text || "" },
+        other: { text: r.other_text || "" },
+        treeType: { text: r.treeType_text || "" },
         direction: r.direction || "",
         entranceSide: r.entranceSide || "",
         houseType: r.houseType || "",
