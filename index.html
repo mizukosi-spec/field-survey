@@ -1516,56 +1516,68 @@ const OfflineTileLayer = L.GridLayer.extend({
     }
 
     // 通常ズーム（18以下）は普通の<img>を1枚返すだけにする。
-    // 拡大表示用のdiv+overflow:hiddenラッパーはiOS Safariでまれに
-    // 描画が抜ける不具合があるため、実際に切り出しが必要な
-    // オーバーズーム時（19以上）だけに限定して使う。
-    const el = (factor === 1) ? document.createElement("img") : (() => {
-      const w = document.createElement("div");
-      w.style.width = "256px";
-      w.style.height = "256px";
-      w.style.overflow = "hidden";
-      w.style.position = "relative";
-      return w;
-    })();
+    // オーバーズーム時（19以上）はdivにbackground-imageとして貼り、
+    // background-size/positionで必要な部分だけを拡大して見せる。
+    // （overflow:hiddenで子要素をクリップする方式はiOS Safariで
+    //  まれに描画が抜ける不具合があったため、クリップ処理が要らない
+    //  background-image方式に変更した）
+    const el = document.createElement(factor === 1 ? "img" : "div");
 
     if(y < 0 || y >= size){
       done(null, el);
       return el;
     }
 
-    const tile = (factor === 1) ? el : document.createElement("img");
-    tile.alt = "";
-    if(factor !== 1){
+    if(factor === 1){
+      el.alt = "";
+    } else {
       const dispSize = 256 * factor;
-      tile.style.width = dispSize + "px";
-      tile.style.height = dispSize + "px";
-      tile.style.position = "absolute";
-      tile.style.left = (-offX * 256) + "px";
-      tile.style.top = (-offY * 256) + "px";
-      el.appendChild(tile);
+      el.style.backgroundRepeat = "no-repeat";
+      el.style.backgroundSize = dispSize + "px " + dispSize + "px";
+      el.style.backgroundPosition = (-offX * 256) + "px " + (-offY * 256) + "px";
+    }
+
+    function applyUrl(url){
+      if(factor === 1){ el.src = url; }
+      else { el.style.backgroundImage = `url("${url}")`; }
+    }
+    // background-image方式では読み込み完了を検知するために裏側でImage()を使う
+    function preload(url, onload, onerror){
+      if(factor === 1){
+        el.onload = onload; el.onerror = onerror; el.src = url;
+      } else {
+        const probe = new Image();
+        probe.onload = () => { applyUrl(url); onload(); };
+        probe.onerror = onerror;
+        probe.src = url;
+      }
     }
 
     const key = `${nz}/${nx}/${ny}`;
     idbGet("tiles", key).then(blob => {
       if(blob){
         const url = URL.createObjectURL(blob);
-        tile.onload = () => { URL.revokeObjectURL(url); done(null, el); };
-        tile.onerror = () => done(null, el);
-        tile.src = url;
+        preload(url,
+          () => { setTimeout(() => URL.revokeObjectURL(url), 3000); done(null, el); },
+          () => { URL.revokeObjectURL(url); done(null, el); });
       } else if(navigator.onLine){
         let retried = false;
-        tile.onload = () => done(null, el);
-        tile.onerror = () => {
-          if(!retried){
-            // 通信の一時的な失敗はよくあるので、少し待って1回だけ再試行する
-            retried = true;
-            setTimeout(() => { tile.src = GSI_URL(nz, nx, ny) + "?retry=1"; }, 600);
-          } else {
-            tileDiag.failed++; updateTileDiagBadge();
-            done(new Error("tile fetch failed: " + key), el);
-          }
+        const attempt = () => {
+          const url = GSI_URL(nz, nx, ny) + (retried ? "?retry=1" : "");
+          preload(url,
+            () => done(null, el),
+            () => {
+              if(!retried){
+                // 通信の一時的な失敗はよくあるので、少し待って1回だけ再試行する
+                retried = true;
+                setTimeout(attempt, 600);
+              } else {
+                tileDiag.failed++; updateTileDiagBadge();
+                done(new Error("tile fetch failed: " + key), el);
+              }
+            });
         };
-        tile.src = GSI_URL(nz, nx, ny);
+        attempt();
       } else {
         tileDiag.offlineSkip++; updateTileDiagBadge();
         done(new Error("offline, tile not cached: " + key), el);
