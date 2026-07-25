@@ -1570,6 +1570,24 @@ tileLayer.addTo(map);
 
 const pointsLayer = L.layerGroup().addTo(map);
 
+/*
+ * iOS Safariはアドレスバーの表示・非表示で実際の表示領域が変わるが、
+ * 通常のresizeイベントが発火しないことがある。そのままだと地図の内部サイズが
+ * 古いまま（実際より小さいまま）になり、タイルが一部しか描画されない
+ * （動かすと市松模様のように黒く抜ける）原因になるため、
+ * 表示領域が変わりうるタイミングで明示的に地図のサイズを再計算させる。
+ */
+function refreshMapSize(){ map.invalidateSize({ pan: false }); }
+window.addEventListener("resize", refreshMapSize);
+window.addEventListener("orientationchange", () => setTimeout(refreshMapSize, 300));
+if(window.visualViewport){
+  window.visualViewport.addEventListener("resize", refreshMapSize);
+}
+document.addEventListener("visibilitychange", () => { if(!document.hidden) refreshMapSize(); });
+// 初期表示直後はSafari側のレイアウトがまだ安定していないことがあるため、少し遅れて再計算する
+setTimeout(refreshMapSize, 300);
+setTimeout(refreshMapSize, 1200);
+
 /* ============== offline banner ============== */
 function updateOnlineState(){
   document.getElementById("offlineBanner").classList.toggle("show", !navigator.onLine);
