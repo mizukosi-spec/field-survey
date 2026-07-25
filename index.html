@@ -1338,20 +1338,20 @@ html,body{
 <div class="sheet" id="syncSheet">
   <div class="grabber"></div>
   <h2>データを共有する</h2>
-  <p class="sub">Wi-Fiにつながっているときに、この端末のデータを送ったり、他の端末のデータを取り込んだりできます。</p>
+  <p class="sub">Wi-Fiにつながっているときに、この端末のデータを送ったり、他の端末のデータを取り込んだりできます。家族の端末どうしで自動的に共有されるよう設定済みです。</p>
 
-  <div class="field">
+  <div class="field sync-advanced" style="display:none;">
     <label>共有用URL</label>
     <input type="text" id="syncEndpoint" placeholder="https://script.google.com/macros/s/..." autocapitalize="off" autocorrect="off" spellcheck="false">
     <p style="font-size:11.5px; color:var(--text-secondary); margin:6px 0 0; line-height:1.6;">先生が用意したスプレッドシートのURLです。一度入れれば次回から覚えています。</p>
   </div>
 
-  <div class="field">
+  <div class="field sync-advanced" style="display:none;">
     <label>この端末の名前</label>
     <input type="text" id="deviceName" placeholder="例：1組iPad-A">
   </div>
 
-  <div class="field">
+  <div class="field sync-advanced" style="display:none;">
     <label>グループ（調査班）名</label>
     <input type="text" id="groupName" placeholder="例：5年1組">
     <p style="font-size:11.5px; color:var(--text-secondary); margin:6px 0 0; line-height:1.6;">同じ名前を入れた端末どうしでデータが共有されます。学級や班ごとに分けたいときは変えてください。</p>
@@ -1362,6 +1362,7 @@ html,body{
   <div class="btn-row" style="flex-direction:column; gap:10px;">
     <button class="btn btn-primary btn-full" id="uploadBtn">☁️ この端末のデータを送る</button>
     <button class="btn btn-secondary btn-full" id="pullBtn">⬇️ みんなのデータを取り込む</button>
+    <p style="text-align:center; margin:2px 0 0;"><span class="plink" id="syncAdvancedToggle" style="font-size:12px; color:var(--text-secondary); cursor:pointer; text-decoration:underline;">共有先を変更する</span></p>
     <button class="btn btn-secondary btn-full" id="closeSyncBtn">閉じる</button>
   </div>
 </div>
@@ -2279,6 +2280,11 @@ async function commitPoint(point){
   toast("地点を保存しました");
   await renderAllPoints();
   await renderPointList();
+  // 保存と同時に、他の端末への送信＆他の端末からの取り込みを裏側で試みる
+  // （オフラインや通信エラー時は記録自体には影響しないよう、失敗しても無視する）
+  if(window.__fieldApp && window.__fieldApp.autoSyncAfterSave){
+    window.__fieldApp.autoSyncAfterSave(point);
+  }
 }
 
 document.getElementById("deleteYaneBtn").addEventListener("click", () => deleteCurrentPoint());
@@ -2511,6 +2517,12 @@ const pullBtn = document.getElementById("pullBtn");
 const deviceNameInput = document.getElementById("deviceName");
 const groupNameInput = document.getElementById("groupName");
 const endpointInput = document.getElementById("syncEndpoint");
+const advancedToggle = document.getElementById("syncAdvancedToggle");
+
+// 家族だけで使うため、共有設定はあらかじめこの値を既定にしておき、
+// 端末名・グループ名の入力は不要にする
+const DEFAULT_ENDPOINT = "https://script.google.com/macros/s/AKfycbwZvvy7yhRUrV6S9RpLVkVNoqvig5LjLpInevA4m7q__k-yybDf0suwRlKfIVgRVGhv/exec";
+const DEFAULT_GROUP = "family";
 
 function setStatus(msg, kind){
   statusEl.className = "sync-status" + (kind ? " " + kind : "");
@@ -2520,27 +2532,28 @@ function esc(s){
   return String(s).replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 }
 
-/* 入力内容を端末に記憶しておく */
+/* 入力内容を端末に記憶しておく（未設定なら家族用の既定値を使う） */
 deviceNameInput.value = localStorage.getItem("fieldSync_device") || "";
-groupNameInput.value = localStorage.getItem("fieldSync_group") || "";
-endpointInput.value = localStorage.getItem("fieldSync_endpoint") || "";
+groupNameInput.value = localStorage.getItem("fieldSync_group") || DEFAULT_GROUP;
+endpointInput.value = localStorage.getItem("fieldSync_endpoint") || DEFAULT_ENDPOINT;
+if(!localStorage.getItem("fieldSync_endpoint")) localStorage.setItem("fieldSync_endpoint", DEFAULT_ENDPOINT);
+if(!localStorage.getItem("fieldSync_group")) localStorage.setItem("fieldSync_group", DEFAULT_GROUP);
 deviceNameInput.addEventListener("change", () => localStorage.setItem("fieldSync_device", deviceNameInput.value.trim()));
-groupNameInput.addEventListener("change", () => localStorage.setItem("fieldSync_group", groupNameInput.value.trim()));
-endpointInput.addEventListener("change", () => localStorage.setItem("fieldSync_endpoint", endpointInput.value.trim()));
+groupNameInput.addEventListener("change", () => localStorage.setItem("fieldSync_group", groupNameInput.value.trim() || DEFAULT_GROUP));
+endpointInput.addEventListener("change", () => localStorage.setItem("fieldSync_endpoint", endpointInput.value.trim() || DEFAULT_ENDPOINT));
+
+/* 共有先の変更が必要なときだけ詳細項目を表示する */
+if(advancedToggle){
+  advancedToggle.addEventListener("click", () => {
+    document.querySelectorAll(".sync-advanced").forEach(el => {
+      el.style.display = el.style.display === "none" ? "block" : "none";
+    });
+  });
+}
 
 function getSettings(){
-  const endpoint = endpointInput.value.trim();
-  const group = groupNameInput.value.trim();
-  if(!endpoint){
-    setStatus("先に<b>共有用URL</b>を貼り付けてください。", "err");
-    endpointInput.focus();
-    return null;
-  }
-  if(!group){
-    setStatus("先に<b>グループ名</b>を入力してください。", "err");
-    groupNameInput.focus();
-    return null;
-  }
+  const endpoint = (endpointInput.value.trim()) || DEFAULT_ENDPOINT;
+  const group = (groupNameInput.value.trim()) || DEFAULT_GROUP;
   if(!navigator.onLine){
     setStatus("インターネットに接続していません。Wi-Fiにつないでからもう一度お試しください。", "err");
     return null;
@@ -2552,6 +2565,122 @@ function getSettings(){
 }
 
 /* ---------- 送る ---------- */
+/* ---------- 取り込む（実処理。ボタン用にもオートシンク用にも使う） ---------- */
+async function doPull(cfg, onProgress){
+  const url = cfg.endpoint + (cfg.endpoint.indexOf("?") >= 0 ? "&" : "?") +
+    "action=pull&group=" + encodeURIComponent(cfg.group);
+  const res = await fetch(url);
+  const data = await res.json();
+  if(!data.ok) throw new Error(data.error || "取り込みに失敗しました");
+
+  const remotePoints = data.points || [];
+  const toImport = [];
+  for(const rp of remotePoints){
+    const local = await window.__fieldApp.idbGet("points", rp.id);
+    if(!local || (rp.updatedAt || "") > (local.updatedAt || "")){
+      toImport.push({ remote: rp, local: local });
+    }
+  }
+  if(toImport.length === 0) return { added: 0, updated: 0 };
+
+  /* 写真のファイルIDを集める */
+  const neededIds = [];
+  toImport.forEach(item => { if(item.remote.photo_id) neededIds.push(item.remote.photo_id); });
+
+  /* 画像をまとめて取得（5枚ずつ） */
+  const imageMap = {};
+  const BATCH = 5;
+  for(let i = 0; i < neededIds.length; i += BATCH){
+    const chunk = neededIds.slice(i, i + BATCH);
+    if(onProgress) onProgress(Math.min(i + BATCH, neededIds.length), neededIds.length);
+    const imgUrl = cfg.endpoint + (cfg.endpoint.indexOf("?") >= 0 ? "&" : "?") +
+      "action=images&ids=" + encodeURIComponent(chunk.join(","));
+    try{
+      const ires = await fetch(imgUrl);
+      const idata = await ires.json();
+      if(idata.ok && idata.images) Object.assign(imageMap, idata.images);
+    }catch(e){ /* 画像が取れなくても本文は取り込む */ }
+  }
+
+  /* ローカル形式に組み立てて保存 */
+  let added = 0, updated = 0;
+  for(const item of toImport){
+    const r = item.remote;
+    const point = {
+      id: r.id,
+      surveyType: r.surveyType,
+      lat: r.lat, lng: r.lng,
+      number: r.number,
+      count: r.count || "",
+      deviceName: r.deviceName,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+      photo: imageMap[r.photo_id] || null,
+      location: { text: r.location_text || "" },
+      mark: { text: r.mark_text || "" },
+      other: { text: r.other_text || "" },
+      treeType: { text: r.treeType_text || "" },
+      direction: r.direction || "",
+      entranceSide: r.entranceSide || "",
+      houseType: r.houseType || "",
+      color: r.color || "",
+      colorOther: "",
+      semiSpecies: r.semiSpecies || "",
+      semiPart: r.semiPart || "",
+      semiDirection: r.semiDirection || "",
+      height: r.height || "",
+      thickness: r.thickness || "",
+      semiGround: r.semiGround || "",
+    };
+    /* 「色」の中に選択肢に無い言葉が混ざっていたら、その他＋自由記述として扱う */
+    if(point.surveyType === "yane" && point.color){
+      const presets = ["黒","緑","青","赤","白","その他"];
+      let colorOther = "";
+      let tokens = point.color.split("・").filter(Boolean).map(t => {
+        if(presets.indexOf(t) >= 0) return t;
+        colorOther = t;
+        return "その他";
+      });
+      tokens = [...new Set(tokens)];
+      point.color = tokens.join("・");
+      point.colorOther = colorOther;
+    }
+    await window.__fieldApp.idbSet("points", point.id, point);
+    if(item.local) updated++; else added++;
+  }
+  await window.__fieldApp.refreshUI();
+  return { added, updated };
+}
+
+/* ---------- 送る（1件だけ。保存直後のオートシンク用） ---------- */
+async function uploadOnePoint(cfg, point){
+  const res = await fetch(cfg.endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ group: cfg.group, device: cfg.device, points: [point] }),
+  });
+  const data = await res.json();
+  if(!data.ok) throw new Error(data.error || "送信に失敗しました");
+  return data;
+}
+
+/* ---------- 保存と同時に自動で送受信する ---------- */
+window.__fieldApp.autoSyncAfterSave = async function(point){
+  if(!navigator.onLine) return; // オフラインのときは何もしない（記録自体は既に保存済み）
+  const cfg = {
+    endpoint: localStorage.getItem("fieldSync_endpoint") || DEFAULT_ENDPOINT,
+    group: localStorage.getItem("fieldSync_group") || DEFAULT_GROUP,
+    device: (localStorage.getItem("fieldSync_device") || "").trim(),
+  };
+  try{ await uploadOnePoint(cfg, point); }catch(e){ /* 通信できないときは静かに諦める */ }
+  try{
+    const result = await doPull(cfg);
+    if(result.added + result.updated > 0){
+      window.__fieldApp.toast(`ほかの端末の記録も${result.added + result.updated}件取り込みました`);
+    }
+  }catch(e){ /* 通信できないときは静かに諦める */ }
+};
+
 uploadBtn.addEventListener("click", async () => {
   const cfg = getSettings();
   if(!cfg) return;
@@ -2570,13 +2699,7 @@ uploadBtn.addEventListener("click", async () => {
     for(let i = 0; i < points.length; i++){
       uploadBtn.textContent = `送信中… ${i + 1}/${points.length}`;
       setStatus(`送信中… <b>${i + 1} / ${points.length}</b>件目`);
-      const res = await fetch(cfg.endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({ group: cfg.group, device: cfg.device, points: [points[i]] }),
-      });
-      const data = await res.json();
-      if(!data.ok) throw new Error(data.error || "送信に失敗しました");
+      const data = await uploadOnePoint(cfg, points[i]);
       added += data.added || 0;
       updated += data.updated || 0;
       skipped += data.skipped || 0;
@@ -2598,99 +2721,18 @@ pullBtn.addEventListener("click", async () => {
   pullBtn.disabled = true;
   const origLabel = pullBtn.textContent;
   pullBtn.textContent = "取り込み中…";
+  setStatus("接続しています…");
   try{
-    setStatus("接続しています…");
-    const url = cfg.endpoint + (cfg.endpoint.indexOf("?") >= 0 ? "&" : "?") +
-      "action=pull&group=" + encodeURIComponent(cfg.group);
-    const res = await fetch(url);
-    const data = await res.json();
-    if(!data.ok) throw new Error(data.error || "取り込みに失敗しました");
-
-    const remotePoints = data.points || [];
-    /* 取り込む必要があるものだけ選ぶ */
-    const toImport = [];
-    for(const rp of remotePoints){
-      const local = await window.__fieldApp.idbGet("points", rp.id);
-      if(!local || (rp.updatedAt || "") > (local.updatedAt || "")){
-        toImport.push({ remote: rp, local: local });
-      }
-    }
-    if(toImport.length === 0){
+    const result = await doPull(cfg, (done, total) => {
+      setStatus(`写真を受け取っています… <b>${done} / ${total}</b>枚`);
+      pullBtn.textContent = `写真 ${done}/${total}`;
+    });
+    if(result.added + result.updated === 0){
       setStatus("新しいデータはありませんでした。", "ok");
-      pullBtn.disabled = false; pullBtn.textContent = origLabel;
-      return;
+    } else {
+      setStatus(`取り込みました。<br>新規 <b>${result.added}件</b> ／ 更新 <b>${result.updated}件</b>`, "ok");
+      window.__fieldApp.toast(`${result.added + result.updated}件を取り込みました`);
     }
-
-    /* 写真のファイルIDを集める（手書きは廃止したため写真のみ） */
-    const neededIds = [];
-    toImport.forEach(item => { if(item.remote.photo_id) neededIds.push(item.remote.photo_id); });
-
-    /* 画像をまとめて取得（5枚ずつ） */
-    const imageMap = {};
-    const BATCH = 5;
-    for(let i = 0; i < neededIds.length; i += BATCH){
-      const chunk = neededIds.slice(i, i + BATCH);
-      setStatus(`写真を受け取っています… <b>${Math.min(i + BATCH, neededIds.length)} / ${neededIds.length}</b>枚`);
-      pullBtn.textContent = `写真 ${Math.min(i + BATCH, neededIds.length)}/${neededIds.length}`;
-      const imgUrl = cfg.endpoint + (cfg.endpoint.indexOf("?") >= 0 ? "&" : "?") +
-        "action=images&ids=" + encodeURIComponent(chunk.join(","));
-      try{
-        const ires = await fetch(imgUrl);
-        const idata = await ires.json();
-        if(idata.ok && idata.images) Object.assign(imageMap, idata.images);
-      }catch(e){ /* 画像が取れなくても本文は取り込む */ }
-    }
-
-    /* ローカル形式に組み立てて保存 */
-    let added = 0, updated = 0;
-    for(const item of toImport){
-      const r = item.remote;
-      const point = {
-        id: r.id,
-        surveyType: r.surveyType,
-        lat: r.lat, lng: r.lng,
-        number: r.number,
-        count: r.count || "",
-        deviceName: r.deviceName,
-        createdAt: r.createdAt,
-        updatedAt: r.updatedAt,
-        photo: imageMap[r.photo_id] || null,
-        location: { text: r.location_text || "" },
-        mark: { text: r.mark_text || "" },
-        other: { text: r.other_text || "" },
-        treeType: { text: r.treeType_text || "" },
-        direction: r.direction || "",
-        entranceSide: r.entranceSide || "",
-        houseType: r.houseType || "",
-        color: r.color || "",
-        colorOther: "",
-        semiSpecies: r.semiSpecies || "",
-        semiPart: r.semiPart || "",
-        semiDirection: r.semiDirection || "",
-        height: r.height || "",
-        thickness: r.thickness || "",
-        semiGround: r.semiGround || "",
-      };
-      /* 「色」の中に選択肢に無い言葉が混ざっていたら、その他＋自由記述として扱う */
-      if(point.surveyType === "yane" && point.color){
-        const presets = ["黒","緑","青","赤","白","その他"];
-        let colorOther = "";
-        let tokens = point.color.split("・").filter(Boolean).map(t => {
-          if(presets.indexOf(t) >= 0) return t;
-          colorOther = t;
-          return "その他";
-        });
-        tokens = [...new Set(tokens)];
-        point.color = tokens.join("・");
-        point.colorOther = colorOther;
-      }
-      await window.__fieldApp.idbSet("points", point.id, point);
-      if(item.local) updated++; else added++;
-    }
-
-    await window.__fieldApp.refreshUI();
-    setStatus(`取り込みました。<br>新規 <b>${added}件</b> ／ 更新 <b>${updated}件</b>`, "ok");
-    window.__fieldApp.toast(`${added + updated}件を取り込みました`);
   }catch(e){
     setStatus("取り込めませんでした。<br><b>" + esc(e && e.message ? e.message : e) + "</b>", "err");
   }
