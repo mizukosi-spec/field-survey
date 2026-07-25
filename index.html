@@ -1651,14 +1651,30 @@ refreshCacheStatus();
 /* ============== sheet helpers ============== */
 const backdrop = document.getElementById("backdrop");
 const sheets = ["typeSheet","downloadSheet","pointSheetYane","pointSheetSemi","listSheet","syncSheet"].map(id => document.getElementById(id));
+let sheetHideTimer = null;
 function openSheet(sheet){
-  sheets.forEach(s => { if(s !== sheet) s.classList.remove("show"); });
+  clearTimeout(sheetHideTimer);
+  sheets.forEach(s => {
+    if(s !== sheet){ s.classList.remove("show"); s.style.pointerEvents = "none"; }
+  });
+  sheet.style.visibility = "visible";
+  sheet.style.pointerEvents = "auto";
+  // 直前の状態が残ったまま描画されることがある（iOS Safari）ため、
+  // 一度強制的にレイアウトを再計算させてからshowを付ける
+  void sheet.offsetHeight;
   sheet.classList.add("show");
   backdrop.classList.add("show");
 }
 function closeSheets(){
-  sheets.forEach(s => s.classList.remove("show"));
+  sheets.forEach(s => { s.classList.remove("show"); s.style.pointerEvents = "none"; });
   backdrop.classList.remove("show");
+  // スライドして消えたはずのシートがiOS Safariの描画不具合で
+  // 画面に残って見えてしまうことがあるため、アニメーション終了後に
+  // 完全に非表示にして確実に消す（操作もこの時点で完全に無効化される）
+  clearTimeout(sheetHideTimer);
+  sheetHideTimer = setTimeout(() => {
+    sheets.forEach(s => { if(!s.classList.contains("show")) s.style.visibility = "hidden"; });
+  }, 320);
 }
 backdrop.addEventListener("click", closeSheets);
 
