@@ -1528,9 +1528,17 @@ const OfflineTileLayer = L.GridLayer.extend({
         tile.onerror = () => done(null, wrapper);
         tile.src = url;
       } else if(navigator.onLine){
-        tile.crossOrigin = "anonymous";
+        let retried = false;
         tile.onload = () => done(null, wrapper);
-        tile.onerror = () => done(null, wrapper);
+        tile.onerror = () => {
+          if(!retried){
+            // 通信の一時的な失敗はよくあるので、少し待って1回だけ再試行する
+            retried = true;
+            setTimeout(() => { tile.src = GSI_URL(nz, nx, ny) + "?retry=1"; }, 600);
+          } else {
+            done(null, wrapper);
+          }
+        };
         tile.src = GSI_URL(nz, nx, ny);
       } else {
         done(null, wrapper);
