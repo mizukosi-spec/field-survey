@@ -1035,6 +1035,7 @@ html,body{
 
 <div id="statusbar">
   <div class="pill" id="cacheStatus">タイル保存数を確認中…</div>
+  <div class="pill" id="tileDiag" style="display:none; color:var(--warn);"></div>
   <div class="pill">地図：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院 地理院タイル（オルソ画像）</a></div>
 </div>
 
@@ -1484,6 +1485,19 @@ L.control.zoom({ position: "bottomright" }).addTo(map);
  * 地理院タイルはズーム18までしか無いため、それより拡大したいときは
  * 18の親タイルの一部分を切り出して拡大表示する（家屋一軒ずつ見えるところまでズーム可能）。
  */
+// タイルが黒くなる原因（通信失敗なのか、単にオフラインで未取得なのか）を画面上で確認できるようにする
+let tileDiag = { failed: 0, offlineSkip: 0 };
+function updateTileDiagBadge(){
+  const el = document.getElementById("tileDiag");
+  if(!el) return;
+  if(tileDiag.failed === 0 && tileDiag.offlineSkip === 0){ el.style.display = "none"; return; }
+  const parts = [];
+  if(tileDiag.offlineSkip > 0) parts.push(`未取得(オフライン) ${tileDiag.offlineSkip}`);
+  if(tileDiag.failed > 0) parts.push(`通信失敗 ${tileDiag.failed}`);
+  el.textContent = parts.join(" ・ ");
+  el.style.display = "block";
+}
+
 const OfflineTileLayer = L.GridLayer.extend({
   createTile: function(coord, done){
     const wrapper = document.createElement("div");
@@ -1536,12 +1550,14 @@ const OfflineTileLayer = L.GridLayer.extend({
             retried = true;
             setTimeout(() => { tile.src = GSI_URL(nz, nx, ny) + "?retry=1"; }, 600);
           } else {
-            done(null, wrapper);
+            tileDiag.failed++; updateTileDiagBadge();
+            done(new Error("tile fetch failed: " + key), wrapper);
           }
         };
         tile.src = GSI_URL(nz, nx, ny);
       } else {
-        done(null, wrapper);
+        tileDiag.offlineSkip++; updateTileDiagBadge();
+        done(new Error("offline, tile not cached: " + key), wrapper);
       }
     }).catch(() => { done(null, wrapper); });
 
