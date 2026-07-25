@@ -783,6 +783,18 @@ html,body{
 #gpsAddBtn.busy .gps-icon{ animation: gps-pulse 1s infinite ease-in-out; }
 @keyframes gps-pulse{ 0%,100%{ opacity:1; } 50%{ opacity:0.35; } }
 
+/* 現在地のリアルタイム表示（青い点） */
+.my-location-wrap{ position:relative; width:20px; height:20px; }
+.my-location-pulse{
+  position:absolute; inset:0; margin:auto; width:16px; height:16px; border-radius:50%;
+  background:rgba(74,144,255,0.4); animation: my-loc-pulse 2s infinite ease-out;
+}
+.my-location-dot{
+  position:absolute; inset:0; margin:auto; width:15px; height:15px; border-radius:50%;
+  background:#4A90FF; border:2.5px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,0.45);
+}
+@keyframes my-loc-pulse{ 0%{ transform:scale(1); opacity:0.7; } 100%{ transform:scale(2.6); opacity:0; } }
+
 /* -------- panels (slide sheets) -------- */
 .sheet-backdrop{
   position:absolute; inset:0; z-index:1900; background:rgba(5,7,10,0.45);
@@ -1024,6 +1036,7 @@ html,body{
   <div class="title-chip"><span class="dot"></span><span id="areaLabel">フィールド調べ</span></div>
 </div>
 <div id="topbarRight">
+  <div class="icon-btn" id="locateBtn" title="現在地をリアルタイム表示">◎</div>
   <div class="icon-btn" id="listBtn" title="地点一覧">☰</div>
   <div class="icon-btn" id="syncBtn" title="データを共有">☁</div>
   <div class="icon-btn" id="downloadBtn" title="地図をダウンロード">⬇</div>
@@ -2049,6 +2062,67 @@ gpsAddBtn.addEventListener("click", () => {
       toast(msg, true);
     },
     { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+});
+
+/* ---------- 現在地をリアルタイム表示（青い点） ---------- */
+let locateWatchId = null;
+let myLocationMarker = null;
+let myAccuracyCircle = null;
+const locateBtn = document.getElementById("locateBtn");
+
+function myLocationIcon(){
+  return L.divIcon({
+    className: "",
+    html: '<div class="my-location-wrap"><div class="my-location-pulse"></div><div class="my-location-dot"></div></div>',
+    iconSize: [20, 20], iconAnchor: [10, 10],
+  });
+}
+function stopLocate(){
+  if(locateWatchId !== null){ navigator.geolocation.clearWatch(locateWatchId); locateWatchId = null; }
+  if(myLocationMarker){ map.removeLayer(myLocationMarker); myLocationMarker = null; }
+  if(myAccuracyCircle){ map.removeLayer(myAccuracyCircle); myAccuracyCircle = null; }
+  locateBtn.classList.remove("active");
+}
+locateBtn.addEventListener("click", () => {
+  if(locateWatchId !== null){
+    stopLocate();
+    toast("現在地の表示を止めました");
+    return;
+  }
+  if(!("geolocation" in navigator)){
+    toast("この端末では位置情報が使えません", true);
+    return;
+  }
+  locateBtn.classList.add("active");
+  let firstFix = true;
+  locateWatchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      const { latitude, longitude, accuracy } = pos.coords;
+      const latlng = [latitude, longitude];
+      if(!myLocationMarker){
+        myLocationMarker = L.marker(latlng, { icon: myLocationIcon(), interactive: false, zIndexOffset: 1000 }).addTo(map);
+        myAccuracyCircle = L.circle(latlng, { radius: accuracy, color: "#4A90FF", weight: 1, fillColor: "#4A90FF", fillOpacity: 0.12, interactive: false }).addTo(map);
+      } else {
+        myLocationMarker.setLatLng(latlng);
+        myAccuracyCircle.setLatLng(latlng);
+        myAccuracyCircle.setRadius(accuracy);
+      }
+      if(firstFix){
+        firstFix = false;
+        map.setView(latlng, Math.max(map.getZoom(), 17));
+        toast("現在地を表示しています");
+      }
+    },
+    (err) => {
+      let msg = "現在地を取得できませんでした";
+      if(err.code === err.PERMISSION_DENIED) msg = "位置情報の利用が許可されていません。設定アプリでSafariの位置情報を「許可」にしてください";
+      else if(err.code === err.TIMEOUT) msg = "現在地の取得がタイムアウトしました。電波の良い場所でもう一度お試しください";
+      else if(err.code === err.POSITION_UNAVAILABLE) msg = "現在地を特定できませんでした";
+      toast(msg, true);
+      stopLocate();
+    },
+    { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 }
   );
 });
 
