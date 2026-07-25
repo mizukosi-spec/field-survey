@@ -1500,20 +1500,10 @@ function updateTileDiagBadge(){
 
 const OfflineTileLayer = L.GridLayer.extend({
   createTile: function(coord, done){
-    const wrapper = document.createElement("div");
-    wrapper.style.width = "256px";
-    wrapper.style.height = "256px";
-    wrapper.style.overflow = "hidden";
-    wrapper.style.position = "relative";
-
     const z = coord.z;
     const size = Math.pow(2, z);
     let x = coord.x % size; if(x < 0) x += size;
     const y = coord.y;
-    if(y < 0 || y >= size){
-      done(null, wrapper);
-      return wrapper;
-    }
 
     let nz = z, nx = x, ny = y, factor = 1, offX = 0, offY = 0;
     if(z > NATIVE_MAX_ZOOM){
@@ -1525,25 +1515,46 @@ const OfflineTileLayer = L.GridLayer.extend({
       offY = y % factor;
     }
 
-    const tile = document.createElement("img");
+    // 通常ズーム（18以下）は普通の<img>を1枚返すだけにする。
+    // 拡大表示用のdiv+overflow:hiddenラッパーはiOS Safariでまれに
+    // 描画が抜ける不具合があるため、実際に切り出しが必要な
+    // オーバーズーム時（19以上）だけに限定して使う。
+    const el = (factor === 1) ? document.createElement("img") : (() => {
+      const w = document.createElement("div");
+      w.style.width = "256px";
+      w.style.height = "256px";
+      w.style.overflow = "hidden";
+      w.style.position = "relative";
+      return w;
+    })();
+
+    if(y < 0 || y >= size){
+      done(null, el);
+      return el;
+    }
+
+    const tile = (factor === 1) ? el : document.createElement("img");
     tile.alt = "";
-    const dispSize = 256 * factor;
-    tile.style.width = dispSize + "px";
-    tile.style.height = dispSize + "px";
-    tile.style.position = "absolute";
-    tile.style.left = (-offX * 256) + "px";
-    tile.style.top = (-offY * 256) + "px";
+    if(factor !== 1){
+      const dispSize = 256 * factor;
+      tile.style.width = dispSize + "px";
+      tile.style.height = dispSize + "px";
+      tile.style.position = "absolute";
+      tile.style.left = (-offX * 256) + "px";
+      tile.style.top = (-offY * 256) + "px";
+      el.appendChild(tile);
+    }
 
     const key = `${nz}/${nx}/${ny}`;
     idbGet("tiles", key).then(blob => {
       if(blob){
         const url = URL.createObjectURL(blob);
-        tile.onload = () => { URL.revokeObjectURL(url); done(null, wrapper); };
-        tile.onerror = () => done(null, wrapper);
+        tile.onload = () => { URL.revokeObjectURL(url); done(null, el); };
+        tile.onerror = () => done(null, el);
         tile.src = url;
       } else if(navigator.onLine){
         let retried = false;
-        tile.onload = () => done(null, wrapper);
+        tile.onload = () => done(null, el);
         tile.onerror = () => {
           if(!retried){
             // 通信の一時的な失敗はよくあるので、少し待って1回だけ再試行する
@@ -1551,18 +1562,17 @@ const OfflineTileLayer = L.GridLayer.extend({
             setTimeout(() => { tile.src = GSI_URL(nz, nx, ny) + "?retry=1"; }, 600);
           } else {
             tileDiag.failed++; updateTileDiagBadge();
-            done(new Error("tile fetch failed: " + key), wrapper);
+            done(new Error("tile fetch failed: " + key), el);
           }
         };
         tile.src = GSI_URL(nz, nx, ny);
       } else {
         tileDiag.offlineSkip++; updateTileDiagBadge();
-        done(new Error("offline, tile not cached: " + key), wrapper);
+        done(new Error("offline, tile not cached: " + key), el);
       }
-    }).catch(() => { done(null, wrapper); });
+    }).catch(() => { done(null, el); });
 
-    wrapper.appendChild(tile);
-    return wrapper;
+    return el;
   }
 });
 const tileLayer = new OfflineTileLayer({ tileSize: 256, updateWhenIdle: true, keepBuffer: 2 });
