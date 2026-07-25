@@ -900,7 +900,12 @@ html,body{
 .point-item .info .name{ font-size:14px; font-weight:600; }
 .point-item .info .meta{ font-size:11px; color:var(--text-secondary); font-family:var(--font-mono); margin-top:1px; }
 .point-item .chev{ color:var(--text-secondary); font-size:18px; }
-.empty-state{ text-align:center; padding:30px 10px; color:var(--text-secondary); font-size:13px; line-height:1.6; }
+.empty-state{ text-align:center; padding:18px 10px; color:var(--text-secondary); font-size:12.5px; line-height:1.6; }
+
+/* 登録した地点シートは画面の大半を覆わないよう高さを抑える */
+#listSheet{ max-height:52vh; }
+#listSheet h2{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+#listCloseBtn{ width:26px; height:26px; font-size:13px; flex-shrink:0; }
 
 /* toast */
 #toast{
@@ -1350,7 +1355,7 @@ html,body{
 <!-- List sheet -->
 <div class="sheet" id="listSheet">
   <div class="grabber"></div>
-  <h2>登録した地点（<span id="pointCount">0</span>）</h2>
+  <h2>登録した地点（<span id="pointCount">0</span>）<span class="icon-btn" id="listCloseBtn" title="閉じる">✕</span></h2>
   <div class="list-tabs">
     <div class="list-tab active" data-filter="all">すべて</div>
     <div class="list-tab" data-filter="yane">屋根マーク</div>
@@ -2240,6 +2245,10 @@ document.querySelectorAll(".list-tab").forEach(tab => {
 document.getElementById("listBtn").addEventListener("click", async () => {
   await renderPointList();
   openSheet(document.getElementById("listSheet"));
+});
+document.getElementById("listCloseBtn").addEventListener("click", (e) => {
+  e.stopPropagation();
+  closeSheets();
 });
 async function renderPointList(){
   let points = await idbGetAll("points");
