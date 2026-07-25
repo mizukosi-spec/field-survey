@@ -1085,7 +1085,7 @@ html,body{
 <div class="sheet" id="downloadSheet">
   <div class="grabber"></div>
   <h2>この範囲をダウンロード</h2>
-  <p class="sub">現在の表示範囲の航空写真を、指定したズーム範囲でこの端末に保存します。保存後はオフラインでも表示できます。</p>
+  <p class="sub">現在の表示範囲とその少し周囲の航空写真を、指定したズーム範囲でこの端末に保存します。保存後はオフラインでも表示できます。もっと広いエリアを保存したいときは、地図を縮小（ピンチアウト）して広い範囲を表示してからダウンロードしてください。</p>
   <div class="field">
     <label>ズーム範囲（大きいほど拡大＝高精細）</label>
     <div class="range-row">
@@ -1613,6 +1613,11 @@ function countTiles(bounds, zMin, zMax){
   }
   return total;
 }
+// ダウンロードは「今画面に見えている範囲」だけだと、あとで少しでもズーム位置がずれるとすぐ黒くなってしまうため、
+// 上下左右に周囲もあわせて保存しておく（表示中の範囲の縦横それぞれ約2倍の面積）
+function downloadBounds(){
+  return map.getBounds().pad(0.5);
+}
 
 /* ============== download sheet logic ============== */
 const zMinRange = document.getElementById("zMinRange");
@@ -1630,10 +1635,10 @@ function updateEstimate(){
   const [zMin, zMax] = currentZRange();
   zMinVal.textContent = zMin;
   zMaxVal.textContent = zMax;
-  const total = countTiles(map.getBounds(), zMin, zMax);
+  const total = countTiles(downloadBounds(), zMin, zMax);
   const mb = (total * 45 / 1024).toFixed(1);
   tileEstimate.classList.toggle("warn", total > 6000);
-  tileEstimate.innerHTML = `表示中の範囲 × ズーム${zMin}〜${zMax}<br>推定 <b>${total.toLocaleString()}</b> 枚（約 <b>${mb}MB</b>）` +
+  tileEstimate.innerHTML = `表示中の範囲とその周囲 × ズーム${zMin}〜${zMax}<br>推定 <b>${total.toLocaleString()}</b> 枚（約 <b>${mb}MB</b>）` +
     (total > 6000 ? "<br>枚数が多い場合は時間がかかります。範囲かズームを絞ることをおすすめします。" : "");
 }
 zMinRange.addEventListener("input", updateEstimate);
@@ -1656,7 +1661,7 @@ async function fetchTileBlob(z,x,y){
   return await res.blob();
 }
 async function runDownload(){
-  const bounds = map.getBounds();
+  const bounds = downloadBounds();
   const [zMin, zMax] = currentZRange();
   const jobs = [];
   for(let z = zMin; z <= zMax; z++){
