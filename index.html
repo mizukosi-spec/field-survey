@@ -1114,6 +1114,7 @@ html,body{
 <button id="addModeBtn" title="地点を追加">+</button>
 
 <div id="statusbar">
+  <div class="pill" id="pointCountStatus">登録地点：確認中…</div>
   <div class="pill" id="cacheStatus">タイル保存数を確認中…</div>
   <div class="pill" id="tileDiag" style="display:none; color:var(--warn);"></div>
   <div class="pill">地図：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院 地理院タイル（オルソ画像）</a></div>
@@ -1691,6 +1692,16 @@ async function refreshCacheStatus(){
   }
 }
 refreshCacheStatus();
+
+/* 地図の航空写真（タイル）とは別に、この端末に保存されている「地点データ」の件数を
+   はっきり表示する（雲マークでの同期がうまくいっているか分かりやすくするため） */
+function updatePointCountStatus(points){
+  const el = document.getElementById("pointCountStatus");
+  if(!el) return;
+  const yaneCount = points.filter(p => p.surveyType === "yane").length;
+  const semiCount = points.filter(p => p.surveyType === "semi").length;
+  el.innerHTML = `登録地点：<b>${points.length}</b>件（屋根${yaneCount}・ぬけがら${semiCount}）`;
+}
 
 /* ============== sheet helpers ============== */
 const backdrop = document.getElementById("backdrop");
@@ -2448,7 +2459,9 @@ document.querySelectorAll("#mapFilterBar .filter-pill").forEach(pill => {
 async function renderAllPoints(){
   pointsLayer.clearLayers();
   for(const k in markerRefs) delete markerRefs[k];
-  let points = await idbGetAll("points");
+  const allPoints = await idbGetAll("points");
+  updatePointCountStatus(allPoints);
+  let points = allPoints;
   if(mapFilter !== "all") points = points.filter(p => p.surveyType === mapFilter);
   points.forEach(p => {
     const hex = colorHexOf(p);
@@ -2936,7 +2949,12 @@ updateSyncStatus();
     if(result.added + result.updated > 0){
       window.__fieldApp.toast(`ほかの端末の記録を${result.added + result.updated}件取り込みました`);
     }
-  }catch(e){ /* 通信できないときは静かに諦める（この端末に保存済みのデータはそのまま使える） */ }
+  }catch(e){
+    // 通信できないときは記録自体は普通に使えるので大きなエラーは出さないが、
+    // 何が起きたかは分かるようにしておく
+    const el = document.getElementById("pointCountStatus");
+    if(el) el.innerHTML += ` <span style="color:var(--warn)">（自動取り込み失敗）</span>`;
+  }
 })();
 
 })();
