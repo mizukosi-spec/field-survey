@@ -843,7 +843,16 @@ html,body{
 .sheet .progress-track, .sheet .btn-secondary, .sheet .photo-preview{
   background:#eef0f3 !important;
 }
-.sheet .list-tab.active{ color:#fff !important; }
+/* 選択済み・アクティブな状態は枠だけでなくボタン自体をはっきり塗りつぶして見分けやすくする
+   （上の明るいテーマ用の上書きがここも打ち消してしまっていたのを修正） */
+.sheet .choice-btn.selected{
+  background:var(--accent) !important; color:#1a0e0a !important; border-color:var(--accent) !important;
+}
+.sheet .choice-btn.selected.semi-selected{
+  background:var(--semi) !important; color:#0a1f11 !important; border-color:var(--semi) !important;
+}
+.sheet .choice-btn.color-btn.selected .cdot{ border-color:#1a0e0a !important; }
+.sheet .list-tab.active{ background:#1a1a1a !important; color:#fff !important; border-color:#1a1a1a !important; }
 .sheet .btn-danger{ background:rgba(220,38,38,0.1) !important; }
 
 .field{ margin-bottom:9px; }
