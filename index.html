@@ -832,8 +832,8 @@ html,body{
 }
 .sheet.show{ transform:translateY(0); }
 .sheet .grabber{ width:34px; height:4px; border-radius:2px; background:var(--panel-border); margin:0 auto 8px; }
-.sheet h2{ font-size:15.5px; margin:0 0 3px; font-weight:700; }
-.sheet .sub{ font-size:11.5px; color:var(--text-secondary); margin:0 0 10px; line-height:1.4; }
+.sheet h2{ font-size:18px; margin:0 0 4px; font-weight:700; }
+.sheet .sub{ font-size:13px; color:var(--text-secondary); margin:0 0 10px; line-height:1.45; }
 
 /* ハードコードされた暗い背景色を、シート内だけ明るい色に差し替える
    （後方のベース定義と詳細度が同じになるため !important で確実に上書きする） */
@@ -855,39 +855,52 @@ html,body{
 .sheet .list-tab.active{ background:#1a1a1a !important; color:#fff !important; border-color:#1a1a1a !important; }
 .sheet .btn-danger{ background:rgba(220,38,38,0.1) !important; }
 
-.field{ margin-bottom:9px; }
-.field label{ display:flex; align-items:center; justify-content:space-between; font-size:11px; color:var(--text-secondary); margin-bottom:3px; font-weight:600; letter-spacing:.02em; }
+.field{ margin-bottom:11px; }
+.field label{ display:flex; align-items:center; justify-content:space-between; font-size:13px; color:var(--text-secondary); margin-bottom:4px; font-weight:600; letter-spacing:.02em; }
 .field .unit-row{ display:flex; align-items:center; gap:8px; }
 .field .unit-row input{ flex:1; }
-.field .unit-row .unit{ font-size:12px; color:var(--text-secondary); }
+.field .unit-row .unit{ font-size:14px; color:var(--text-secondary); }
 .field input[type=text], .field textarea, .field input[type=number]{
   width:100%; background:#181e28; border:1px solid var(--panel-border); border-radius:var(--radius-sm);
-  color:var(--text-primary); font-size:14px; padding:8px 10px; font-family:var(--font-ui);
+  color:var(--text-primary); font-size:16.5px; padding:10px 11px; font-family:var(--font-ui);
 }
-.field textarea{ min-height:44px; resize:vertical; }
+.field textarea{ min-height:48px; resize:vertical; }
 .field input:focus, .field textarea:focus{ outline:none; border-color:var(--accent); }
 
 /* two-column layout to cut down on scrolling */
 .field-row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:9px; }
 .field-row .field{ margin-bottom:0; }
+.field-row-3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px; margin-bottom:9px; }
+.field-row-3 .field{ margin-bottom:0; }
+.field-row-4{ display:grid; grid-template-columns:1.15fr 0.85fr 0.85fr 1.15fr; gap:6px; margin-bottom:9px; }
+.field-row-4 .field{ margin-bottom:0; }
+.field-row-3 .field label, .field-row-4 .field label{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.field-row-3 input[type=text], .field-row-3 input[type=number],
+.field-row-4 input[type=text], .field-row-4 input[type=number]{ padding-left:8px; padding-right:6px; }
+
+/* 幅の狭いカラムに収める写真フィールド（セミのぬけがら調べ 1行目用） */
+.compact-photo .photo-empty .btn{ padding:9px 4px; font-size:13px; }
+.compact-photo .photo-preview img{ max-height:56px; object-fit:cover; }
+.compact-photo .photo-actions{ flex-direction:column; padding:6px; gap:5px; }
+.compact-photo .photo-actions .btn{ padding:6px; font-size:11.5px; }
 
 /* choice button groups */
-.choice-row{ display:flex; gap:6px; flex-wrap:wrap; }
+.choice-row{ display:flex; gap:7px; flex-wrap:wrap; }
 .choice-btn{
-  padding:7px 12px; border-radius:999px; border:1px solid var(--panel-border);
-  background:#181e28; color:var(--text-primary); font-size:13px; font-weight:600;
+  padding:9px 15px; border-radius:999px; border:1px solid var(--panel-border);
+  background:#181e28; color:var(--text-primary); font-size:15px; font-weight:600;
   cursor:pointer; font-family:var(--font-ui); transition:background .15s, border-color .15s, transform .1s;
 }
 .choice-btn:active{ transform:scale(0.95); }
 .choice-btn.selected{ background:var(--accent); border-color:var(--accent); color:#1a0e0a; }
 .choice-btn.selected.semi-selected{ background:var(--semi); border-color:var(--semi); color:#0a1f11; }
-.choice-btn.color-btn{ display:flex; align-items:center; gap:6px; }
-.choice-btn.color-btn .cdot{ width:11px; height:11px; border-radius:50%; border:1px solid rgba(255,255,255,0.5); }
+.choice-btn.color-btn{ display:flex; align-items:center; gap:7px; }
+.choice-btn.color-btn .cdot{ width:12px; height:12px; border-radius:50%; border:1px solid rgba(255,255,255,0.5); }
 .choice-btn.color-btn.selected .cdot{ border-color:#1a0e0a; }
 
 .btn-row{ display:flex; gap:8px; margin-top:4px; }
 .btn{
-  flex:1; padding:11px; border-radius:var(--radius-sm); border:none; font-size:14.5px; font-weight:700;
+  flex:1; padding:13px; border-radius:var(--radius-sm); border:none; font-size:16.5px; font-weight:700;
   cursor:pointer; font-family:var(--font-ui); transition:opacity .15s, transform .1s;
 }
 .btn:active{ transform:scale(0.97); }
@@ -908,8 +921,8 @@ html,body{
 }
 .type-card:active{ transform:scale(0.97); }
 .type-card .emoji{ font-size:27px; width:40px; text-align:center; }
-.type-card .txt .ttl{ font-size:14.5px; font-weight:700; margin-bottom:2px; }
-.type-card .txt .desc{ font-size:11.5px; color:var(--text-secondary); }
+.type-card .txt .ttl{ font-size:17px; font-weight:700; margin-bottom:2px; }
+.type-card .txt .desc{ font-size:13.5px; color:var(--text-secondary); }
 .type-card.yane:active, .type-card.yane.hover{ border-color:var(--accent); }
 .type-card.semi:active, .type-card.semi.hover{ border-color:var(--semi); }
 
@@ -920,7 +933,7 @@ html,body{
 
 .tile-estimate{
   background:#181e28; border:1px solid var(--panel-border); border-radius:var(--radius-sm);
-  padding:10px 12px; font-size:12.5px; color:var(--text-secondary); margin-bottom:10px; line-height:1.5;
+  padding:11px 13px; font-size:14px; color:var(--text-secondary); margin-bottom:10px; line-height:1.55;
 }
 .tile-estimate b{ color:var(--text-primary); font-family:var(--font-mono); }
 .tile-estimate.warn b{ color:var(--warn); }
@@ -928,36 +941,36 @@ html,body{
 .progress-wrap{ margin:10px 0 4px; }
 .progress-track{ height:8px; border-radius:4px; background:#181e28; overflow:hidden; }
 .progress-fill{ height:100%; width:0%; background:var(--accent); transition:width .15s; }
-.progress-label{ display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:12px; color:var(--text-secondary); margin-top:6px; }
+.progress-label{ display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:13.5px; color:var(--text-secondary); margin-top:6px; }
 
 /* points list */
 .list-tabs{ display:flex; gap:8px; margin-bottom:10px; }
 .list-tab{
-  flex:1; text-align:center; padding:8px 6px; border-radius:999px; border:1px solid var(--panel-border);
-  background:#181e28; color:var(--text-secondary); font-size:12px; font-weight:700; cursor:pointer;
+  flex:1; text-align:center; padding:9px 6px; border-radius:999px; border:1px solid var(--panel-border);
+  background:#181e28; color:var(--text-secondary); font-size:14px; font-weight:700; cursor:pointer;
 }
 .list-tab.active{ background:var(--text-primary); color:#0f141c; border-color:var(--text-primary); }
 .point-item{
-  display:flex; align-items:center; gap:10px; padding:9px 4px; border-bottom:1px solid var(--panel-border);
+  display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid var(--panel-border);
   cursor:pointer;
 }
 .point-item .num-badge{
-  width:28px; height:28px; border-radius:7px; background:#181e28; color:var(--text-primary);
-  font-family:var(--font-mono); font-size:11.5px; font-weight:700; display:flex; align-items:center; justify-content:center;
+  width:30px; height:30px; border-radius:7px; background:#181e28; color:var(--text-primary);
+  font-family:var(--font-mono); font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center;
   flex-shrink:0; border:1px solid var(--panel-border);
 }
 .point-item .dot{ width:11px; height:11px; border-radius:50%; flex-shrink:0; border:1px solid rgba(255,255,255,0.3); }
 .point-item .dot.square{ border-radius:3px; }
 .point-item .info{ flex:1; min-width:0; }
-.point-item .info .name{ font-size:14px; font-weight:600; }
-.point-item .info .meta{ font-size:11px; color:var(--text-secondary); font-family:var(--font-mono); margin-top:1px; }
+.point-item .info .name{ font-size:16px; font-weight:600; }
+.point-item .info .meta{ font-size:13px; color:var(--text-secondary); font-family:var(--font-mono); margin-top:1px; }
 .point-item .chev{ color:var(--text-secondary); font-size:18px; }
-.empty-state{ text-align:center; padding:18px 10px; color:var(--text-secondary); font-size:12.5px; line-height:1.6; }
+.empty-state{ text-align:center; padding:18px 10px; color:var(--text-secondary); font-size:14px; line-height:1.6; }
 
 /* 登録した地点シートは画面の大半を覆わないよう高さを抑える */
 #listSheet{ max-height:52vh; }
 #listSheet h2{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
-#listCloseBtn{ width:26px; height:26px; font-size:13px; flex-shrink:0; }
+#listCloseBtn{ width:28px; height:28px; font-size:14px; flex-shrink:0; }
 
 /* toast */
 #toast{
@@ -999,7 +1012,7 @@ html,body{
 /* sync status */
 .sync-status{
   background:#181e28; border:1px solid var(--panel-border); border-radius:var(--radius-sm);
-  padding:12px 14px; font-size:13px; color:var(--text-secondary); margin-bottom:16px; line-height:1.7;
+  padding:12px 14px; font-size:14.5px; color:var(--text-secondary); margin-bottom:16px; line-height:1.65;
 }
 .sync-status b{ color:var(--text-primary); font-family:var(--font-mono); }
 .sync-status.ok b{ color:var(--success); }
@@ -1186,7 +1199,24 @@ html,body{
   <p class="sub" id="yaneCoordLabel"></p>
   <button type="button" class="btn btn-secondary btn-full" id="yaneMoveLocationBtn" style="display:none; margin-bottom:12px;">📍 地図で位置を修正する</button>
 
-  <div class="field-row">
+  <div class="field-row-3">
+    <div class="field compact-photo">
+      <label>写真</label>
+      <div class="photo-field">
+        <input type="file" id="yanePhotoInput" accept="image/*" capture="environment" style="display:none;">
+        <div class="photo-empty" id="yanePhotoEmpty">
+          <button type="button" class="btn btn-secondary btn-full" id="yanePhotoTakeBtn">📷 撮影</button>
+        </div>
+        <div class="photo-preview" id="yanePhotoPreview" style="display:none;">
+          <img id="yanePhotoImg" src="" alt="撮影した写真">
+          <div class="photo-actions">
+            <button type="button" class="btn btn-secondary" id="yanePhotoTrimBtn">切抜</button>
+            <button type="button" class="btn btn-secondary" id="yanePhotoRetakeBtn">再撮</button>
+            <button type="button" class="btn btn-danger" id="yanePhotoRemoveBtn">削除</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="field">
       <label>番号</label>
       <input type="number" id="fNumber" inputmode="numeric">
@@ -1196,76 +1226,34 @@ html,body{
       <input type="number" id="fCount" inputmode="numeric" placeholder="例：1">
     </div>
   </div>
-  <p style="font-size:10.5px; color:var(--text-secondary); margin:-5px 0 9px;" id="fNumberHint"></p>
+  <p style="font-size:12.5px; color:var(--text-secondary); margin:-3px 0 9px;" id="fNumberHint"></p>
 
-  <div class="field-row">
+  <div class="field-row-3">
     <div class="field">
-      <label>場所（自由記述）</label>
-      <input type="text" id="fLocationText" placeholder="例：〇〇邸の南側屋根">
-    </div>
-    <div class="field">
-      <label>マーク（自由記述）</label>
-      <input type="text" id="fMarkText" placeholder="例：丸に十字">
-    </div>
-  </div>
-
-  <div class="field">
-    <label>写真（任意）</label>
-    <div class="photo-field">
-      <input type="file" id="yanePhotoInput" accept="image/*" capture="environment" style="display:none;">
-      <div class="photo-empty" id="yanePhotoEmpty">
-        <button type="button" class="btn btn-secondary btn-full" id="yanePhotoTakeBtn">📷 カメラを起動して撮影</button>
-      </div>
-      <div class="photo-preview" id="yanePhotoPreview" style="display:none;">
-        <img id="yanePhotoImg" src="" alt="撮影した写真">
-        <div class="photo-actions">
-          <button type="button" class="btn btn-secondary" id="yanePhotoTrimBtn">トリミング</button>
-          <button type="button" class="btn btn-secondary" id="yanePhotoRetakeBtn">撮り直す</button>
-          <button type="button" class="btn btn-danger" id="yanePhotoRemoveBtn">削除</button>
-        </div>
+      <label>方角</label>
+      <div class="choice-row" data-field="direction">
+        <button type="button" class="choice-btn" data-value="東">東</button>
+        <button type="button" class="choice-btn" data-value="西">西</button>
+        <button type="button" class="choice-btn" data-value="南">南</button>
+        <button type="button" class="choice-btn" data-value="北">北</button>
       </div>
     </div>
-  </div>
-
-  <div class="field">
-    <label>方角</label>
-    <div class="choice-row" data-field="direction">
-      <button type="button" class="choice-btn" data-value="東">東</button>
-      <button type="button" class="choice-btn" data-value="西">西</button>
-      <button type="button" class="choice-btn" data-value="南">南</button>
-      <button type="button" class="choice-btn" data-value="北">北</button>
+    <div class="field">
+      <label>玄関からの向き</label>
+      <div class="choice-row" data-field="entranceSide">
+        <button type="button" class="choice-btn" data-value="表">表</button>
+        <button type="button" class="choice-btn" data-value="裏">裏</button>
+      </div>
     </div>
-  </div>
-
-  <div class="field">
-    <label>玄関からの向き</label>
-    <div class="choice-row" data-field="entranceSide">
-      <button type="button" class="choice-btn" data-value="表">表</button>
-      <button type="button" class="choice-btn" data-value="裏">裏</button>
+    <div class="field">
+      <label>家の種類</label>
+      <div class="choice-row" data-field="houseType">
+        <button type="button" class="choice-btn" data-value="古い家">古い家</button>
+        <button type="button" class="choice-btn" data-value="新しい家">新しい家</button>
+        <button type="button" class="choice-btn" data-value="神社">神社</button>
+        <button type="button" class="choice-btn" data-value="寺">寺</button>
+      </div>
     </div>
-  </div>
-
-  <div class="field">
-    <label>家の種類</label>
-    <div class="choice-row" data-field="houseType">
-      <button type="button" class="choice-btn" data-value="古い家">古い家</button>
-      <button type="button" class="choice-btn" data-value="新しい家">新しい家</button>
-      <button type="button" class="choice-btn" data-value="神社">神社</button>
-      <button type="button" class="choice-btn" data-value="寺">寺</button>
-    </div>
-  </div>
-
-  <div class="field">
-    <label>色</label>
-    <div class="choice-row" data-field="color">
-      <button type="button" class="choice-btn color-btn" data-value="黒"><span class="cdot" style="background:#1F2430"></span>黒</button>
-      <button type="button" class="choice-btn color-btn" data-value="緑"><span class="cdot" style="background:#22C55E"></span>緑</button>
-      <button type="button" class="choice-btn color-btn" data-value="青"><span class="cdot" style="background:#3B82F6"></span>青</button>
-      <button type="button" class="choice-btn color-btn" data-value="赤"><span class="cdot" style="background:#EF4444"></span>赤</button>
-      <button type="button" class="choice-btn color-btn" data-value="白"><span class="cdot" style="background:#F8FAFC"></span>白</button>
-      <button type="button" class="choice-btn color-btn" data-value="その他"><span class="cdot" style="background:#A78BFA"></span>その他</button>
-    </div>
-    <input type="text" id="fColorOther" placeholder="色の名前を入力" style="margin-top:6px; display:none;">
   </div>
 
   <div class="field">
@@ -1287,7 +1275,24 @@ html,body{
   <p class="sub" id="semiCoordLabel"></p>
   <button type="button" class="btn btn-secondary btn-full" id="semiMoveLocationBtn" style="display:none; margin-bottom:12px;">📍 地図で位置を修正する</button>
 
-  <div class="field-row">
+  <div class="field-row-4">
+    <div class="field compact-photo">
+      <label>写真</label>
+      <div class="photo-field">
+        <input type="file" id="semiPhotoInput" accept="image/*" capture="environment" style="display:none;">
+        <div class="photo-empty" id="semiPhotoEmpty">
+          <button type="button" class="btn btn-secondary btn-full" id="semiPhotoTakeBtn">📷 撮影</button>
+        </div>
+        <div class="photo-preview" id="semiPhotoPreview" style="display:none;">
+          <img id="semiPhotoImg" src="" alt="撮影した写真">
+          <div class="photo-actions">
+            <button type="button" class="btn btn-secondary" id="semiPhotoTrimBtn">切抜</button>
+            <button type="button" class="btn btn-secondary" id="semiPhotoRetakeBtn">再撮</button>
+            <button type="button" class="btn btn-danger" id="semiPhotoRemoveBtn">削除</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="field">
       <label>番号</label>
       <input type="number" id="sNumber" inputmode="numeric">
@@ -1296,19 +1301,12 @@ html,body{
       <label>数</label>
       <input type="number" id="sCount" inputmode="numeric" placeholder="例：1">
     </div>
-  </div>
-  <p style="font-size:10.5px; color:var(--text-secondary); margin:-5px 0 9px;" id="sNumberHint"></p>
-
-  <div class="field-row">
     <div class="field">
-      <label>場所（自由記述）</label>
-      <input type="text" id="sLocationText" placeholder="例：校庭の桜の木の幹">
-    </div>
-    <div class="field">
-      <label>木の種類（自由記述）</label>
+      <label>木の種類</label>
       <input type="text" id="sTreeText" placeholder="例：サクラ">
     </div>
   </div>
+  <p style="font-size:12.5px; color:var(--text-secondary); margin:-3px 0 9px;" id="sNumberHint"></p>
 
   <div class="field">
     <label>セミの種類</label>
@@ -1322,72 +1320,54 @@ html,body{
     </div>
   </div>
 
-  <div class="field">
-    <label>写真（任意）</label>
-    <div class="photo-field">
-      <input type="file" id="semiPhotoInput" accept="image/*" capture="environment" style="display:none;">
-      <div class="photo-empty" id="semiPhotoEmpty">
-        <button type="button" class="btn btn-secondary btn-full" id="semiPhotoTakeBtn">📷 カメラを起動して撮影</button>
-      </div>
-      <div class="photo-preview" id="semiPhotoPreview" style="display:none;">
-        <img id="semiPhotoImg" src="" alt="撮影した写真">
-        <div class="photo-actions">
-          <button type="button" class="btn btn-secondary" id="semiPhotoTrimBtn">トリミング</button>
-          <button type="button" class="btn btn-secondary" id="semiPhotoRetakeBtn">撮り直す</button>
-          <button type="button" class="btn btn-danger" id="semiPhotoRemoveBtn">削除</button>
-        </div>
+  <div class="field-row">
+    <div class="field">
+      <label>部分</label>
+      <div class="choice-row" data-field="semiPart">
+        <button type="button" class="choice-btn" data-value="みき">みき</button>
+        <button type="button" class="choice-btn" data-value="葉">葉</button>
+        <button type="button" class="choice-btn" data-value="えだ">えだ</button>
+        <button type="button" class="choice-btn" data-value="その他">その他</button>
       </div>
     </div>
-  </div>
-
-  <div class="field">
-    <label>部分</label>
-    <div class="choice-row" data-field="semiPart">
-      <button type="button" class="choice-btn" data-value="みき">みき</button>
-      <button type="button" class="choice-btn" data-value="葉">葉</button>
-      <button type="button" class="choice-btn" data-value="えだ">えだ</button>
-      <button type="button" class="choice-btn" data-value="その他">その他</button>
+    <div class="field">
+      <label>方角</label>
+      <div class="choice-row" data-field="semiDirection">
+        <button type="button" class="choice-btn" data-value="東">東</button>
+        <button type="button" class="choice-btn" data-value="西">西</button>
+        <button type="button" class="choice-btn" data-value="南">南</button>
+        <button type="button" class="choice-btn" data-value="北">北</button>
+      </div>
     </div>
   </div>
 
-  <div class="field">
-    <label>方角</label>
-    <div class="choice-row" data-field="semiDirection">
-      <button type="button" class="choice-btn" data-value="東">東</button>
-      <button type="button" class="choice-btn" data-value="西">西</button>
-      <button type="button" class="choice-btn" data-value="南">南</button>
-      <button type="button" class="choice-btn" data-value="北">北</button>
+  <div class="field-row-3">
+    <div class="field">
+      <label>高さ</label>
+      <div class="unit-row">
+        <input type="number" id="sHeightFrom" inputmode="decimal" placeholder="100">
+        <span style="color:var(--text-secondary)">〜</span>
+        <input type="number" id="sHeightTo" inputmode="decimal" placeholder="150">
+      </div>
+    </div>
+    <div class="field">
+      <label>木の太さ</label>
+      <div class="unit-row">
+        <input type="number" id="sThickness" inputmode="decimal" placeholder="例：30">
+        <span class="unit">cm</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>地面</label>
+      <div class="choice-row" data-field="semiGround">
+        <button type="button" class="choice-btn" data-value="土">土</button>
+        <button type="button" class="choice-btn" data-value="砂利">砂利</button>
+        <button type="button" class="choice-btn" data-value="石">石</button>
+        <button type="button" class="choice-btn" data-value="コンクリート">コンクリート</button>
+      </div>
     </div>
   </div>
-
-  <div class="field">
-    <label>高さ</label>
-    <div class="unit-row">
-      <input type="number" id="sHeightFrom" inputmode="decimal" placeholder="例：100">
-      <span style="color:var(--text-secondary)">〜</span>
-      <input type="number" id="sHeightTo" inputmode="decimal" placeholder="例：150">
-      <span class="unit">cm</span>
-    </div>
-    <p style="font-size:10.5px; color:var(--text-secondary); margin:6px 0 0;">幅がなければ「から」だけ入力してください</p>
-  </div>
-
-  <div class="field">
-    <label>木の太さ</label>
-    <div class="unit-row">
-      <input type="number" id="sThickness" inputmode="decimal" placeholder="例：30">
-      <span class="unit">cm</span>
-    </div>
-  </div>
-
-  <div class="field">
-    <label>地面</label>
-    <div class="choice-row" data-field="semiGround">
-      <button type="button" class="choice-btn" data-value="土">土</button>
-      <button type="button" class="choice-btn" data-value="砂利">砂利</button>
-      <button type="button" class="choice-btn" data-value="石">石</button>
-      <button type="button" class="choice-btn" data-value="コンクリート">コンクリート</button>
-    </div>
-  </div>
+  <p style="font-size:12.5px; color:var(--text-secondary); margin:-3px 0 9px;">高さは幅がなければ「から」だけ、単位はcm</p>
 
   <div class="btn-row">
     <button class="btn btn-danger" id="deleteSemiBtn" style="display:none;">削除</button>
@@ -1405,7 +1385,7 @@ html,body{
   <div class="field sync-advanced" style="display:none;">
     <label>共有用URL</label>
     <input type="text" id="syncEndpoint" placeholder="https://script.google.com/macros/s/..." autocapitalize="off" autocorrect="off" spellcheck="false">
-    <p style="font-size:11.5px; color:var(--text-secondary); margin:6px 0 0; line-height:1.6;">先生が用意したスプレッドシートのURLです。一度入れれば次回から覚えています。</p>
+    <p style="font-size:13px; color:var(--text-secondary); margin:6px 0 0; line-height:1.55;">先生が用意したスプレッドシートのURLです。一度入れれば次回から覚えています。</p>
   </div>
 
   <div class="field sync-advanced" style="display:none;">
@@ -1416,7 +1396,7 @@ html,body{
   <div class="field sync-advanced" style="display:none;">
     <label>グループ（調査班）名</label>
     <input type="text" id="groupName" placeholder="例：5年1組">
-    <p style="font-size:11.5px; color:var(--text-secondary); margin:6px 0 0; line-height:1.6;">同じ名前を入れた端末どうしでデータが共有されます。学級や班ごとに分けたいときは変えてください。</p>
+    <p style="font-size:13px; color:var(--text-secondary); margin:6px 0 0; line-height:1.55;">同じ名前を入れた端末どうしでデータが共有されます。学級や班ごとに分けたいときは変えてください。</p>
   </div>
 
   <div class="sync-status" id="syncStatus">接続を確認しています…</div>
@@ -2097,9 +2077,6 @@ document.querySelectorAll(".choice-row[data-field]").forEach(row => {
       btn.classList.toggle("semi-selected", isSemi && btn.classList.contains("selected"));
       const values = [...row.querySelectorAll(".choice-btn.selected")].map(b => b.getAttribute("data-value"));
       formState[field] = values.join(CHOICE_SEP);
-      if(field === "color"){
-        document.getElementById("fColorOther").style.display = values.includes("その他") ? "block" : "none";
-      }
     });
   });
 });
@@ -2329,21 +2306,12 @@ async function openPointForm(type, existing){
         : "この端末だけの仮の番号です（共有設定がオフ、または未接続）";
     }
     document.getElementById("fCount").value = existing ? (existing.count || "") : "";
-    document.getElementById("fLocationText").value = existing ? (existing.location && existing.location.text) || "" : "";
-    document.getElementById("fMarkText").value = existing ? (existing.mark && existing.mark.text) || "" : "";
     document.getElementById("fOtherText").value = existing ? (existing.other && existing.other.text) || "" : "";
-    ["direction","entranceSide","houseType","color"].forEach(f => resetChoiceRow(f));
-    document.getElementById("fColorOther").style.display = "none";
-    document.getElementById("fColorOther").value = "";
+    ["direction","entranceSide","houseType"].forEach(f => resetChoiceRow(f));
     if(existing){
       applyChoiceRow("direction", existing.direction);
       applyChoiceRow("entranceSide", existing.entranceSide);
       applyChoiceRow("houseType", existing.houseType);
-      applyChoiceRow("color", existing.color);
-      if(existing.color === "その他"){
-        document.getElementById("fColorOther").style.display = "block";
-        document.getElementById("fColorOther").value = existing.colorOther || "";
-      }
     }
     photoYane.show(existing && existing.photo ? existing.photo : null);
     document.getElementById("deleteYaneBtn").style.display = existing ? "block" : "none";
@@ -2363,7 +2331,6 @@ async function openPointForm(type, existing){
         : "この端末だけの仮の番号です（共有設定がオフ、または未接続）";
     }
     document.getElementById("sCount").value = existing ? (existing.count || "") : "";
-    document.getElementById("sLocationText").value = existing ? (existing.location && existing.location.text) || "" : "";
     document.getElementById("sTreeText").value = existing ? (existing.treeType && existing.treeType.text) || "" : "";
     {
       const hParts = existing && existing.height ? String(existing.height).split("〜") : [];
@@ -2395,14 +2362,10 @@ document.getElementById("saveYaneBtn").addEventListener("click", async () => {
     lat: pendingLatLng.lat, lng: pendingLatLng.lng,
     number: document.getElementById("fNumber").value.trim(),
     count: document.getElementById("fCount").value.trim(),
-    location: { text: document.getElementById("fLocationText").value.trim() },
-    mark: { text: document.getElementById("fMarkText").value.trim() },
     photo: photoYane.getValue(),
     direction: formState.direction,
     entranceSide: formState.entranceSide,
     houseType: formState.houseType,
-    color: formState.color,
-    colorOther: formState.color.split(CHOICE_SEP).includes("その他") ? document.getElementById("fColorOther").value.trim() : "",
     other: { text: document.getElementById("fOtherText").value.trim() },
     updatedAt: new Date().toISOString(),
   };
@@ -2421,7 +2384,6 @@ document.getElementById("saveSemiBtn").addEventListener("click", async () => {
     lat: pendingLatLng.lat, lng: pendingLatLng.lng,
     number: document.getElementById("sNumber").value.trim(),
     count: document.getElementById("sCount").value.trim(),
-    location: { text: document.getElementById("sLocationText").value.trim() },
     treeType: { text: document.getElementById("sTreeText").value.trim() },
     photo: photoSemi.getValue(),
     semiSpecies: formState.semiSpecies,
