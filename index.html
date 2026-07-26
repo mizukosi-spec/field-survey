@@ -1012,6 +1012,13 @@ html,body{
   flex-shrink:0; text-align:center; padding:14px 10px; color:var(--text-primary);
   font-size:14px; font-weight:700;
 }
+#cropBrightnessRow{
+  flex-shrink:0; display:flex; align-items:center; gap:10px;
+  padding:0 16px 10px; color:var(--text-primary);
+}
+.crop-brightness-label{ font-size:13px; white-space:nowrap; }
+#cropBrightnessRow input[type=range]{ flex:1; accent-color:var(--accent); }
+.crop-brightness-val{ font-family:var(--font-mono); font-size:12px; width:44px; text-align:right; color:var(--text-secondary); }
 #cropStage{
   flex:1; position:relative; display:flex; align-items:center; justify-content:center;
   overflow:hidden; touch-action:none; min-height:0;
@@ -1094,6 +1101,11 @@ html,body{
 <!-- 写真トリミング -->
 <div id="cropOverlay">
   <div class="crop-top">写真をトリミング</div>
+  <div id="cropBrightnessRow">
+    <span class="crop-brightness-label">☀️ 明るさ</span>
+    <input type="range" id="cropBrightnessRange" min="100" max="220" value="145">
+    <span class="crop-brightness-val" id="cropBrightnessVal">145%</span>
+  </div>
   <div id="cropStage">
     <img id="cropImg" alt="トリミング対象の写真">
     <div id="cropBox">
@@ -1890,7 +1902,21 @@ function openCropTool(dataUrl){
     const img = document.getElementById("cropImg");
     const box = document.getElementById("cropBox");
     const stage = document.getElementById("cropStage");
+    const brightnessRange = document.getElementById("cropBrightnessRange");
+    const brightnessVal = document.getElementById("cropBrightnessVal");
     const MIN_SIZE = 16; // これより小さくトリミングできないようにする下限（狭い範囲まで切り出せるように縮小）
+
+    // 屋外だと空の明るさに引っ張られて被写体が暗く写りがちなため、
+    // 明るさスライダーの初期値をあらかじめ底上げしておく（最大220%まで調整可）
+    brightnessRange.value = "145";
+    brightnessVal.textContent = "145%";
+    function currentFilter(){ return `brightness(${brightnessRange.value}%)`; }
+    function applyPreviewFilter(){
+      img.style.filter = currentFilter();
+      brightnessVal.textContent = brightnessRange.value + "%";
+    }
+    applyPreviewFilter();
+    brightnessRange.addEventListener("input", applyPreviewFilter);
 
     function stageLocalRect(el){
       const r = el.getBoundingClientRect();
@@ -1962,11 +1988,28 @@ function openCropTool(dataUrl){
     function cleanup(){
       document.removeEventListener("pointermove", onPointerMove);
       document.removeEventListener("pointerup", onPointerUp);
+      brightnessRange.removeEventListener("input", applyPreviewFilter);
+      img.style.filter = "";
       overlay.classList.remove("show");
+    }
+    // 明るさ補正だけを画像に焼き込んで書き出す（切り抜き範囲は sx,sy,sw,sh で指定）
+    function renderWithBrightness(sx, sy, sw, sh){
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(sw));
+      canvas.height = Math.max(1, Math.round(sh));
+      const ctx = canvas.getContext("2d");
+      if("filter" in ctx) ctx.filter = currentFilter();
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL("image/jpeg", 0.85);
     }
 
     document.getElementById("cropResetBtn").onclick = resetCropBox;
-    document.getElementById("cropCancelBtn").onclick = () => { cleanup(); resolve(dataUrl); };
+    document.getElementById("cropCancelBtn").onclick = () => {
+      // トリミングはしないが、明るさ補正だけは反映する
+      const out = renderWithBrightness(0, 0, img.naturalWidth, img.naturalHeight);
+      cleanup();
+      resolve(out);
+    };
     document.getElementById("cropConfirmBtn").onclick = () => {
       const ir = img.getBoundingClientRect();
       const br = box.getBoundingClientRect();
@@ -1976,15 +2019,12 @@ function openCropTool(dataUrl){
       const sy = Math.max(0, (br.top - ir.top) * scaleY);
       const sw = Math.min(img.naturalWidth - sx, br.width * scaleX);
       const sh = Math.min(img.naturalHeight - sy, br.height * scaleY);
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.max(1, Math.round(sw));
-      canvas.height = Math.max(1, Math.round(sh));
-      canvas.getContext("2d").drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+      const out = renderWithBrightness(sx, sy, sw, sh);
       cleanup();
-      resolve(canvas.toDataURL("image/jpeg", 0.85));
+      resolve(out);
     };
 
-    img.onload = () => requestAnimationFrame(resetCropBox);
+    img.onload = () => { requestAnimationFrame(resetCropBox); applyPreviewFilter(); };
     img.src = dataUrl;
     overlay.classList.add("show");
   });
@@ -2707,12 +2747,13 @@ async function doPull(cfg, onProgress){
   const neededIds = [];
   toImport.forEach(item => { if(item.remote.photo_id) neededIds.push(item.remote.photo_id); });
 
-  /* 画像をまとめて取得（5枚ずつ） */
+  /* 画像をまとめて取得（5枚ずつのバッチを並行して取りに行く） */
   const imageMap = {};
   const BATCH = 5;
-  for(let i = 0; i < neededIds.length; i += BATCH){
-    const chunk = neededIds.slice(i, i + BATCH);
-    if(onProgress) onProgress(Math.min(i + BATCH, neededIds.length), neededIds.length);
+  const chunks = [];
+  for(let i = 0; i < neededIds.length; i += BATCH) chunks.push(neededIds.slice(i, i + BATCH));
+  let doneCount = 0;
+  await Promise.all(chunks.map(async (chunk) => {
     const imgUrl = cfg.endpoint + (cfg.endpoint.indexOf("?") >= 0 ? "&" : "?") +
       "action=images&ids=" + encodeURIComponent(chunk.join(","));
     try{
@@ -2720,7 +2761,9 @@ async function doPull(cfg, onProgress){
       const idata = await ires.json();
       if(idata.ok && idata.images) Object.assign(imageMap, idata.images);
     }catch(e){ /* 画像が取れなくても本文は取り込む */ }
-  }
+    doneCount += chunk.length;
+    if(onProgress) onProgress(Math.min(doneCount, neededIds.length), neededIds.length);
+  }));
 
   /* ローカル形式に組み立てて保存 */
   let added = 0, updated = 0;
@@ -2735,6 +2778,7 @@ async function doPull(cfg, onProgress){
       deviceName: r.deviceName,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
+      _syncedAt: r.updatedAt,
       photo: imageMap[r.photo_id] || null,
       location: { text: r.location_text || "" },
       mark: { text: r.mark_text || "" },
@@ -2783,6 +2827,13 @@ async function uploadOnePoint(cfg, point){
   if(!data.ok) throw new Error(data.error || "送信に失敗しました");
   return data;
 }
+/* 送信済みの内容を記録しておき、次回以降は変更があった地点だけを送るようにする */
+async function markPointSynced(point){
+  try{
+    point._syncedAt = point.updatedAt;
+    await window.__fieldApp.idbSet("points", point.id, point);
+  }catch(e){ /* 記録できなくても致命的ではないので無視 */ }
+}
 
 /* ---------- 保存と同時に自動で送受信する ---------- */
 window.__fieldApp.autoSyncAfterSave = async function(point){
@@ -2792,7 +2843,7 @@ window.__fieldApp.autoSyncAfterSave = async function(point){
     group: localStorage.getItem("fieldSync_group") || DEFAULT_GROUP,
     device: (localStorage.getItem("fieldSync_device") || "").trim(),
   };
-  try{ await uploadOnePoint(cfg, point); }catch(e){ /* 通信できないときは静かに諦める */ }
+  try{ await uploadOnePoint(cfg, point); await markPointSynced(point); }catch(e){ /* 通信できないときは静かに諦める */ }
   try{
     const result = await doPull(cfg);
     if(result.added + result.updated > 0){
@@ -2808,24 +2859,38 @@ uploadBtn.addEventListener("click", async () => {
   uploadBtn.disabled = true;
   const origLabel = uploadBtn.textContent;
   try{
-    const points = await window.__fieldApp.idbGetAll("points");
+    const all = await window.__fieldApp.idbGetAll("points");
+    // 前回すでに送信済み（内容が変わっていない）地点は送り直さない
+    const points = all.filter(p => p._syncedAt !== p.updatedAt);
     if(points.length === 0){
-      setStatus("送るデータがありません。", "err");
+      setStatus("送信していないデータはありません（すべて送信済みです）。", "ok");
       uploadBtn.disabled = false; uploadBtn.textContent = origLabel;
       return;
     }
-    let added = 0, updated = 0, skipped = 0;
-    /* 1件ずつ送る（写真が大きいため、まとめて送ると失敗しやすい） */
-    for(let i = 0; i < points.length; i++){
-      uploadBtn.textContent = `送信中… ${i + 1}/${points.length}`;
-      setStatus(`送信中… <b>${i + 1} / ${points.length}</b>件目`);
-      const data = await uploadOnePoint(cfg, points[i]);
-      added += data.added || 0;
-      updated += data.updated || 0;
-      skipped += data.skipped || 0;
+    let added = 0, updated = 0, skipped = 0, failed = 0, done = 0;
+    const CONCURRENCY = 3; // 数件を並行して送ることで待ち時間を短縮する
+    let idx = 0;
+    async function worker(){
+      while(idx < points.length){
+        const p = points[idx++];
+        try{
+          const data = await uploadOnePoint(cfg, p);
+          added += data.added || 0;
+          updated += data.updated || 0;
+          skipped += data.skipped || 0;
+          await markPointSynced(p);
+        }catch(e){ failed++; }
+        done++;
+        uploadBtn.textContent = `送信中… ${done}/${points.length}`;
+        setStatus(`送信中… <b>${done} / ${points.length}</b>件目`);
+      }
     }
-    setStatus(`送信しました。<br>新規 <b>${added}件</b> ／ 更新 <b>${updated}件</b> ／ 変更なし <b>${skipped}件</b>`, "ok");
-    window.__fieldApp.toast(`${added + updated}件を送信しました`);
+    const workers = [];
+    for(let i = 0; i < CONCURRENCY; i++) workers.push(worker());
+    await Promise.all(workers);
+    const failNote = failed > 0 ? `<br>送信できなかったもの <b>${failed}件</b>（次回また試みます）` : "";
+    setStatus(`送信しました。<br>新規 <b>${added}件</b> ／ 更新 <b>${updated}件</b> ／ 変更なし <b>${skipped}件</b>${failNote}`, failed > 0 ? "err" : "ok");
+    if(added + updated > 0) window.__fieldApp.toast(`${added + updated}件を送信しました`);
   }catch(e){
     setStatus("送信できませんでした。<br><b>" + esc(e && e.message ? e.message : e) + "</b>", "err");
   }
