@@ -2312,11 +2312,8 @@ async function openPointForm(type, existing){
       document.getElementById("fNumber").value = existing.number || "";
       document.getElementById("fNumberHint").textContent = "";
     } else {
-      const info = await reserveNumber("yane");
-      document.getElementById("fNumber").value = info.number;
-      document.getElementById("fNumberHint").textContent = info.shared
-        ? "オンラインで他の端末と重ならない番号を発行しました"
-        : "この端末だけの仮の番号です（共有設定がオフ、または未接続）";
+      document.getElementById("fNumber").value = await nextNumber("yane");
+      document.getElementById("fNumberHint").textContent = "仮の番号です（保存すると確定します）";
     }
     document.getElementById("fCount").value = existing ? (existing.count || "") : "";
     document.getElementById("fOtherText").value = existing ? (existing.other && existing.other.text) || "" : "";
@@ -2337,11 +2334,8 @@ async function openPointForm(type, existing){
       document.getElementById("sNumber").value = existing.number || "";
       document.getElementById("sNumberHint").textContent = "";
     } else {
-      const info = await reserveNumber("semi");
-      document.getElementById("sNumber").value = info.number;
-      document.getElementById("sNumberHint").textContent = info.shared
-        ? "オンラインで他の端末と重ならない番号を発行しました"
-        : "この端末だけの仮の番号です（共有設定がオフ、または未接続）";
+      document.getElementById("sNumber").value = await nextNumber("semi");
+      document.getElementById("sNumberHint").textContent = "仮の番号です（保存すると確定します）";
     }
     document.getElementById("sCount").value = existing ? (existing.count || "") : "";
     document.getElementById("sTreeText").value = existing ? (existing.treeType && existing.treeType.text) || "" : "";
@@ -2369,11 +2363,19 @@ document.getElementById("cancelYaneBtn").addEventListener("click", closeSheets);
 document.getElementById("cancelSemiBtn").addEventListener("click", closeSheets);
 
 document.getElementById("saveYaneBtn").addEventListener("click", async () => {
+  let finalNumber = document.getElementById("fNumber").value.trim();
+  if(!editingId){
+    const info = await reserveNumber("yane");
+    finalNumber = info.number;
+    toast(info.shared
+      ? "オンラインで他の端末と重ならない番号を発行しました"
+      : "この端末だけの仮の番号です（共有設定がオフ、または未接続）");
+  }
   const point = {
     id: editingId || (crypto.randomUUID ? crypto.randomUUID() : "p" + Date.now() + Math.random().toString(16).slice(2)),
     surveyType: "yane",
     lat: pendingLatLng.lat, lng: pendingLatLng.lng,
-    number: document.getElementById("fNumber").value.trim(),
+    number: finalNumber,
     count: document.getElementById("fCount").value.trim(),
     photo: photoYane.getValue(),
     direction: formState.direction,
@@ -2391,11 +2393,19 @@ document.getElementById("saveSemiBtn").addEventListener("click", async () => {
   let heightVal = "";
   if(hFrom && hTo) heightVal = `${hFrom}〜${hTo}`;
   else heightVal = hFrom || hTo;
+  let finalNumber = document.getElementById("sNumber").value.trim();
+  if(!editingId){
+    const info = await reserveNumber("semi");
+    finalNumber = info.number;
+    toast(info.shared
+      ? "オンラインで他の端末と重ならない番号を発行しました"
+      : "この端末だけの仮の番号です（共有設定がオフ、または未接続）");
+  }
   const point = {
     id: editingId || (crypto.randomUUID ? crypto.randomUUID() : "p" + Date.now() + Math.random().toString(16).slice(2)),
     surveyType: "semi",
     lat: pendingLatLng.lat, lng: pendingLatLng.lng,
-    number: document.getElementById("sNumber").value.trim(),
+    number: finalNumber,
     count: document.getElementById("sCount").value.trim(),
     treeType: { text: document.getElementById("sTreeText").value.trim() },
     photo: photoSemi.getValue(),
