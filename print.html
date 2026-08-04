@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>写真印刷シート — フィールド調べ</title>
 <style>
-  :root{ --bg:#0f141c; --panel:#1c2430; --accent:#ffb84d; }
+  :root{ --bg:#0f141c; --panel:#1c2430; --accent:#ffb84d; --cell-size:30mm; }
   *{ box-sizing:border-box; }
   body{ margin:0; font-family:-apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif; background:#fff; }
   #toolbar{
@@ -21,17 +21,23 @@
   }
   .btn-back{ background:#333d4a; color:#fff; }
   .btn-go{ background:var(--accent); color:#1a0e0a; }
+  #sizeToggle{ display:flex; gap:6px; background:#0f141c; border-radius:8px; padding:3px; }
+  #sizeToggle .size-opt{
+    border:none; background:transparent; color:#9aa4b2; font-size:13px; font-weight:700;
+    padding:7px 12px; border-radius:6px; cursor:pointer;
+  }
+  #sizeToggle .size-opt.active{ background:var(--accent); color:#1a0e0a; }
   #status{ padding:14px; color:#555; font-size:13px; }
   #grid{
     display:flex; flex-wrap:wrap; gap:2mm;
     padding:10mm; background:#fff;
   }
   .cell{
-    width:30mm; break-inside:avoid; page-break-inside:avoid;
+    width:var(--cell-size); break-inside:avoid; page-break-inside:avoid;
     text-align:center; color:#000;
   }
   .cell img{
-    width:30mm; height:30mm; object-fit:cover; display:block;
+    width:var(--cell-size); height:var(--cell-size); object-fit:cover; display:block;
     border:0.2mm solid #999;
   }
   .cell .num{ font-size:9pt; font-weight:700; margin-top:1mm; line-height:1.2; }
@@ -45,8 +51,12 @@
 <body>
 
 <div id="toolbar">
-  <div class="title">写真印刷シート(3cm×3cm・A4)</div>
-  <div style="display:flex; gap:8px;">
+  <div class="title" id="toolbarTitle">写真印刷シート(3cm×3cm・A4)</div>
+  <div style="display:flex; gap:8px; align-items:center;">
+    <div id="sizeToggle">
+      <button class="size-opt active" data-size="30">3cm</button>
+      <button class="size-opt" data-size="20">2cm</button>
+    </div>
     <a class="btn btn-back" href="index.html">地図に戻る</a>
     <button class="btn btn-go" id="goBtn">印刷する</button>
   </div>
@@ -115,6 +125,17 @@ function escapeHtml(s){
 })();
 
 document.getElementById("goBtn").addEventListener("click", () => window.print());
+
+document.querySelectorAll("#sizeToggle .size-opt").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#sizeToggle .size-opt").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    const mm = btn.getAttribute("data-size");
+    document.documentElement.style.setProperty("--cell-size", mm + "mm");
+    document.getElementById("toolbarTitle").textContent = `写真印刷シート(${mm==="30"?"3":"2"}cm×${mm==="30"?"3":"2"}cm・A4)`;
+  });
+});
+
 </script>
 </body>
 </html>
