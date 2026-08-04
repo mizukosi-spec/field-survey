@@ -2925,8 +2925,21 @@ async function doPull(cfg, onProgress){
 
   /* ローカル形式に組み立てて保存 */
   let added = 0, updated = 0;
+  const photoFetchFailedNumbers = [];
   for(const item of toImport){
     const r = item.remote;
+    let photo;
+    if(r.photo_id && imageMap[r.photo_id]){
+      photo = imageMap[r.photo_id];
+    } else if(r.photo_id){
+      /* サーバーには写真があるはずなのに今回は取得できなかった。
+         これまでの内容が既にあるならそれを残し、無ければ空のままにする
+         （取得失敗のたびにnullで上書きすると、せっかく手元にある写真まで消えてしまうため） */
+      photo = (item.local && item.local.photo) || null;
+      photoFetchFailedNumbers.push(r.number || r.id);
+    } else {
+      photo = null;
+    }
     const point = {
       id: r.id,
       surveyType: r.surveyType,
@@ -2937,7 +2950,7 @@ async function doPull(cfg, onProgress){
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
       _syncedAt: r.updatedAt,
-      photo: imageMap[r.photo_id] || null,
+      photo: photo,
       location: { text: r.location_text || "" },
       mark: { text: r.mark_text || "" },
       other: { text: r.other_text || "" },
@@ -2971,7 +2984,12 @@ async function doPull(cfg, onProgress){
     if(item.local) updated++; else added++;
   }
   await window.__fieldApp.refreshUI();
-  return { added, updated, deletedLocally };
+  if(photoFetchFailedNumbers.length > 0){
+    const shown = photoFetchFailedNumbers.slice(0, 5).join("、");
+    const more = photoFetchFailedNumbers.length > 5 ? ` 他${photoFetchFailedNumbers.length - 5}件` : "";
+    window.__fieldApp.toast(`写真を取得できなかった地点があります（番号: ${shown}${more}）。通信状態の良い所でもう一度取り込んでください`, true);
+  }
+  return { added, updated, deletedLocally, photoFetchFailed: photoFetchFailedNumbers.length };
 }
 
 /* ---------- 送る（1件だけ。保存直後のオートシンク用） ---------- */
