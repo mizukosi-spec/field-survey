@@ -2568,10 +2568,14 @@ async function renderAllPoints(){
       const delEl = el.querySelector("[data-del]");
       if(editEl) editEl.addEventListener("click", () => { map.closePopup(); openPointForm(p.surveyType, p); });
       if(delEl) delEl.addEventListener("click", async () => {
-        await idbDelete("points", p.id);
+        const idToDelete = p.id;
+        await idbDelete("points", idToDelete);
         map.closePopup();
         toast("地点を削除しました");
         renderAllPoints(); renderPointList();
+        if(window.__fieldApp && window.__fieldApp.deletePointRemote){
+          window.__fieldApp.deletePointRemote(idToDelete);
+        }
       });
     });
     markerRefs[p.id] = marker;
