@@ -672,6 +672,11 @@ svg.leaflet-image-layer.leaflet-interactive path {
 		-webkit-print-color-adjust: exact;
 		print-color-adjust: exact;
 		}
+	/* 地点マーク（屋根マーク・セミ）の色も、印刷時に消されず残るようにする */
+	.pt-marker, .pt-marker * {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+		}
 	}
 
 </style>
