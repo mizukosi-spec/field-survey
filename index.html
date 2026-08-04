@@ -1088,6 +1088,15 @@ html,body{
 #fatalError p{ font-size:13.5px; color:var(--text-secondary); line-height:1.7; margin:0 0 14px; }
 #fatalError code{ display:block; background:#181e28; border-radius:8px; padding:10px; font-size:11px; color:#F87171; margin-top:10px; text-align:left; white-space:pre-wrap; word-break:break-all; }
 
+#oldMapCredit{
+  position:absolute; left:10px; bottom:calc(10px + env(safe-area-inset-bottom));
+  z-index:999; pointer-events:none;
+  background:var(--panel-bg); border:1px solid var(--panel-border);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border-radius:999px; padding:6px 12px; font-size:11px; font-weight:600;
+  color:var(--text-secondary);
+}
+
 </style>
 </head>
 <body>
@@ -1103,6 +1112,7 @@ html,body{
   <div class="title-chip"><span class="dot"></span><span id="areaLabel">フィールド調べ</span></div>
 </div>
 <div id="topbarRight">
+  <div class="icon-btn" id="oldMapToggleBtn" title="旧版地形図(明治期)と切り替え">🕰️</div>
   <div class="icon-btn" id="locateBtn" title="現在地をリアルタイム表示">◎</div>
   <div class="icon-btn" id="listBtn" title="地点一覧">☰</div>
   <div class="icon-btn" id="syncBtn" title="データを共有">☁</div>
@@ -1126,6 +1136,8 @@ html,body{
   <div class="pill" id="tileDiag" style="display:none; color:var(--warn);"></div>
   <div class="pill">地図：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院 地理院タイル（オルソ画像）</a></div>
 </div>
+
+<div id="oldMapCredit" style="display:none;">今昔マップ on the web（中京圏 1888～1898年ごろ）</div>
 
 <div id="toast"><span class="toast-dot"></span><span id="toastMsg"></span></div>
 
@@ -1654,6 +1666,38 @@ const OfflineTileLayer = L.GridLayer.extend({
 });
 const tileLayer = new OfflineTileLayer({ tileSize: 256, updateWhenIdle: true, keepBuffer: 2 });
 tileLayer.addTo(map);
+
+/*
+ * 旧版地形図（今昔マップ on the web・中京圏 1888~1898年ごろ）を切り替え表示。
+ * こちらはオフライン保存はせず、通信があるときだけオンラインで読み込む。
+ * 利用規約により「今昔マップ on the web」の表示を必須としている。
+ */
+const oldMapLayer = L.tileLayer("https://ktgis.net/kjmapw/kjtilemap/chukyo/2man/{z}/{x}/{y}.png", {
+  tms: true, minZoom: 8, maxZoom: MAP_MAX_ZOOM, maxNativeZoom: 16, tileSize: 256, attribution: ""
+});
+let oldMapActive = false;
+document.getElementById("oldMapToggleBtn").addEventListener("click", () => {
+  oldMapActive = !oldMapActive;
+  const btn = document.getElementById("oldMapToggleBtn");
+  const credit = document.getElementById("oldMapCredit");
+  if(oldMapActive){
+    if(!navigator.onLine){
+      toast("旧版地形図はオンラインのときだけ表示できます", true);
+      oldMapActive = false;
+      return;
+    }
+    tileLayer.remove();
+    oldMapLayer.addTo(map);
+    btn.classList.add("active");
+    credit.style.display = "block";
+    toast("旧版地形図（明治期・中京圏）に切り替えました");
+  } else {
+    oldMapLayer.remove();
+    tileLayer.addTo(map);
+    btn.classList.remove("active");
+    credit.style.display = "none";
+  }
+});
 
 const pointsLayer = L.layerGroup().addTo(map);
 
