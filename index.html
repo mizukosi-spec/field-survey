@@ -1115,15 +1115,12 @@ html,body{
   <div class="icon-btn" id="oldMapToggleBtn" title="旧版地形図(明治期)と切り替え">🕰️</div>
   <div class="icon-btn" id="locateBtn" title="現在地をリアルタイム表示">◎</div>
   <div class="icon-btn" id="listBtn" title="地点一覧">☰</div>
-  <div class="icon-btn" id="syncBtn" title="データを共有">☁</div>
-  <div class="icon-btn" id="downloadBtn" title="地図をダウンロード">⬇</div>
+  <div class="icon-btn" id="toolsBtn" title="共有・ダウンロード" style="font-size:13px; letter-spacing:-1px;">☁⬇</div>
   <a class="icon-btn" href="print.html" title="写真を印刷" style="text-decoration:none;">🖨️</a>
 </div>
 
 <div id="mapFilterBar">
-  <div class="filter-pill active" data-filter="all">全</div>
-  <div class="filter-pill" data-filter="yane">🏠</div>
-  <div class="filter-pill" data-filter="semi"><svg width="15" height="15" viewBox="0 0 643 643"><use href="#icon-semi"></use></svg></div>
+  <div class="filter-pill active" id="filterToggleBtn" data-filter="yane">🏠</div>
 </div>
 
 <div id="addModeHint">地図をタップして地点を追加</div>
@@ -1184,6 +1181,24 @@ html,body{
   </div>
   <div class="btn-row" style="margin-top:16px;">
     <button class="btn btn-secondary btn-full" id="cancelTypeBtn">キャンセル</button>
+  </div>
+</div>
+
+<div class="sheet" id="toolsSheet">
+  <div class="grabber"></div>
+  <h2>データの共有・保存</h2>
+  <div class="type-choice">
+    <div class="type-card yane" id="openSyncBtn">
+      <div class="emoji">☁</div>
+      <div class="txt"><div class="ttl">データを共有</div><div class="desc">記録をほかの端末と送受信します</div></div>
+    </div>
+    <div class="type-card semi" id="openDownloadBtn">
+      <div class="emoji">⬇</div>
+      <div class="txt"><div class="ttl">地図をダウンロード</div><div class="desc">オフラインで使えるように地図を保存します</div></div>
+    </div>
+  </div>
+  <div class="btn-row" style="margin-top:16px;">
+    <button class="btn btn-secondary btn-full" id="cancelToolsBtn">キャンセル</button>
   </div>
 </div>
 
@@ -1755,7 +1770,7 @@ function updatePointCountStatus(points){
 
 /* ============== sheet helpers ============== */
 const backdrop = document.getElementById("backdrop");
-const sheets = ["typeSheet","downloadSheet","pointSheetYane","pointSheetSemi","listSheet","syncSheet"].map(id => document.getElementById(id));
+const sheets = ["typeSheet","downloadSheet","pointSheetYane","pointSheetSemi","listSheet","syncSheet","toolsSheet"].map(id => document.getElementById(id));
 let sheetHideTimer = null;
 function openSheet(sheet){
   if(typeof moveModeId !== "undefined" && moveModeId){ moveModeId = null; moveModeType = null; addModeHint.classList.remove("show"); }
@@ -1844,7 +1859,14 @@ zMinRange.addEventListener("input", updateEstimate);
 zMaxRange.addEventListener("input", updateEstimate);
 map.on("moveend", () => { if(document.getElementById("downloadSheet").classList.contains("show")) updateEstimate(); });
 
-document.getElementById("downloadBtn").addEventListener("click", () => {
+document.getElementById("toolsBtn").addEventListener("click", () => {
+  openSheet(document.getElementById("toolsSheet"));
+});
+document.getElementById("cancelToolsBtn").addEventListener("click", closeSheets);
+document.getElementById("openSyncBtn").addEventListener("click", () => {
+  openSheet(document.getElementById("syncSheet"));
+});
+document.getElementById("openDownloadBtn").addEventListener("click", () => {
   updateEstimate();
   document.getElementById("progressWrap").style.display = "none";
   document.getElementById("startDlBtn").disabled = false;
@@ -2512,21 +2534,22 @@ function colorHexOf(p){
   if(first === "その他") return COLOR_HEX["その他"];
   return COLOR_HEX[first] || "#94A3B8";
 }
-let mapFilter = "all"; // "all" | "yane" | "semi"
-document.querySelectorAll("#mapFilterBar .filter-pill").forEach(pill => {
-  pill.addEventListener("click", () => {
-    mapFilter = pill.getAttribute("data-filter");
-    document.querySelectorAll("#mapFilterBar .filter-pill").forEach(p => p.classList.toggle("active", p === pill));
-    renderAllPoints();
-  });
+let mapFilter = "yane"; // "yane" | "semi"
+const filterToggleBtn = document.getElementById("filterToggleBtn");
+const YANE_ICON_HTML = "🏠";
+const SEMI_ICON_HTML = '<svg width="15" height="15" viewBox="0 0 643 643"><use href="#icon-semi"></use></svg>';
+filterToggleBtn.addEventListener("click", () => {
+  mapFilter = (mapFilter === "yane") ? "semi" : "yane";
+  filterToggleBtn.setAttribute("data-filter", mapFilter);
+  filterToggleBtn.innerHTML = (mapFilter === "yane") ? YANE_ICON_HTML : SEMI_ICON_HTML;
+  renderAllPoints();
 });
 async function renderAllPoints(){
   pointsLayer.clearLayers();
   for(const k in markerRefs) delete markerRefs[k];
   const allPoints = await idbGetAll("points");
   updatePointCountStatus(allPoints);
-  let points = allPoints;
-  if(mapFilter !== "all") points = points.filter(p => p.surveyType === mapFilter);
+  let points = allPoints.filter(p => p.surveyType === mapFilter);
   points.forEach(p => {
     const hex = colorHexOf(p);
     const firstColor = (p.color || "").split(CHOICE_SEP)[0];
@@ -2705,7 +2728,7 @@ document.getElementById("exportBtn").addEventListener("click", async () => {
   toast("GeoJSONを書き出しました（手書き・写真も含みます）");
 });
 
-document.getElementById("syncBtn").addEventListener("click", () => openSheet(document.getElementById("syncSheet")));
+
 document.getElementById("closeSyncBtn").addEventListener("click", closeSheets);
 
 /* ============== expose internals for the cloud sync module ============== */
