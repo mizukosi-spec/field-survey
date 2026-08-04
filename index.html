@@ -1453,6 +1453,7 @@ html,body{
     <div class="list-tab active" data-filter="all">すべて</div>
     <div class="list-tab" data-filter="yane">屋根マーク</div>
     <div class="list-tab" data-filter="semi">ぬけがら</div>
+    <div class="list-tab" data-filter="dup">重複疑い</div>
   </div>
   <div id="pointListBody"></div>
   <div class="btn-row" style="margin-top:14px;">
@@ -2653,46 +2654,96 @@ document.getElementById("listCloseBtn").addEventListener("click", (e) => {
   e.stopPropagation();
   closeSheets();
 });
+/* 2地点間のおおよその距離（メートル） */
+function distanceMeters(a, b){
+  const R = 6371000;
+  const dLat = (b.lat - a.lat) * Math.PI / 180;
+  const dLng = (b.lng - a.lng) * Math.PI / 180;
+  const lat1 = a.lat * Math.PI / 180, lat2 = b.lat * Math.PI / 180;
+  const h = Math.sin(dLat/2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng/2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+const DUP_THRESHOLD_M = 3; // これより近い、同じ種類の地点は「重複の疑いあり」としてまとめる
+function findDuplicateClusters(points){
+  const groups = [];
+  const used = new Set();
+  for(let i = 0; i < points.length; i++){
+    if(used.has(points[i].id)) continue;
+    const cluster = [points[i]];
+    for(let j = i + 1; j < points.length; j++){
+      if(used.has(points[j].id)) continue;
+      if(points[i].surveyType !== points[j].surveyType) continue;
+      if(distanceMeters(points[i], points[j]) <= DUP_THRESHOLD_M) cluster.push(points[j]);
+    }
+    if(cluster.length > 1){
+      cluster.forEach(p => used.add(p.id));
+      groups.push(cluster);
+    }
+  }
+  return groups;
+}
+function buildPointItemEl(p){
+  const item = document.createElement("div");
+  item.className = "point-item";
+  const hex = colorHexOf(p);
+  let mainText, metaText, dotClass = "";
+  if(p.surveyType === "semi"){
+    mainText = p.semiSpecies || "セミのぬけがら";
+    metaText = [p.semiPart, p.semiDirection].filter(Boolean).join(" ・ ");
+    dotClass = "square";
+  } else {
+    mainText = (p.location && p.location.text) || "（場所未入力）";
+    metaText = [p.houseType, p.direction].filter(Boolean).join(" ・ ");
+  }
+  item.innerHTML = `
+    <div class="num-badge">${escapeHtml(p.number || "-")}</div>
+    <div class="dot ${dotClass}" style="background:${hex}"></div>
+    <div class="info">
+      <div class="name">${escapeHtml(mainText)}</div>
+      <div class="meta">${escapeHtml(metaText)}</div>
+    </div>
+    <div class="chev">›</div>
+  `;
+  item.addEventListener("click", () => {
+    closeSheets();
+    map.setView([p.lat, p.lng], Math.max(map.getZoom(), 17));
+    setTimeout(() => { const m = markerRefs[p.id]; if(m) m.openPopup(); }, 350);
+  });
+  return item;
+}
 async function renderPointList(){
+  const body = document.getElementById("pointListBody");
+  body.innerHTML = "";
+
+  if(listFilter === "dup"){
+    const allPoints = await idbGetAll("points");
+    const clusters = findDuplicateClusters(allPoints);
+    document.getElementById("pointCount").textContent = clusters.reduce((s,c) => s + c.length, 0);
+    if(clusters.length === 0){
+      body.innerHTML = `<div class="empty-state">近い場所（${DUP_THRESHOLD_M}m以内）にある同じ種類の地点は見つかりませんでした。</div>`;
+      return;
+    }
+    clusters.forEach((cluster, idx) => {
+      const maxDist = Math.max(...cluster.slice(1).map(p => distanceMeters(cluster[0], p)));
+      const header = document.createElement("div");
+      header.style.cssText = "padding:12px 4px 4px; font-size:12px; font-weight:700; color:var(--warn);";
+      header.textContent = `重複の疑い ${idx+1}（${cluster.length}件・最大約${maxDist.toFixed(1)}m以内）`;
+      body.appendChild(header);
+      cluster.sort((a,b) => (parseInt(a.number,10)||0) - (parseInt(b.number,10)||0));
+      cluster.forEach(p => body.appendChild(buildPointItemEl(p)));
+    });
+    return;
+  }
+
   let points = await idbGetAll("points");
   if(listFilter !== "all") points = points.filter(p => p.surveyType === listFilter);
   points.sort((a,b) => (parseInt(a.number,10)||0) - (parseInt(b.number,10)||0));
   document.getElementById("pointCount").textContent = points.length;
-  const body = document.getElementById("pointListBody");
-  body.innerHTML = "";
   if(points.length === 0){
     body.innerHTML = `<div class="empty-state">まだ地点が登録されていません。<br>右下の ＋ ボタンから地図上をタップして追加できます。</div>`;
     return;
   }
-  points.forEach(p => {
-    const item = document.createElement("div");
-    item.className = "point-item";
-    const hex = colorHexOf(p);
-    let mainText, metaText, dotClass = "";
-    if(p.surveyType === "semi"){
-      mainText = p.semiSpecies || "セミのぬけがら";
-      metaText = [p.semiPart, p.semiDirection].filter(Boolean).join(" ・ ");
-      dotClass = "square";
-    } else {
-      mainText = (p.location && p.location.text) || "（場所未入力）";
-      metaText = [p.houseType, p.direction].filter(Boolean).join(" ・ ");
-    }
-    item.innerHTML = `
-      <div class="num-badge">${escapeHtml(p.number || "-")}</div>
-      <div class="dot ${dotClass}" style="background:${hex}"></div>
-      <div class="info">
-        <div class="name">${escapeHtml(mainText)}</div>
-        <div class="meta">${escapeHtml(metaText)}</div>
-      </div>
-      <div class="chev">›</div>
-    `;
-    item.addEventListener("click", () => {
-      closeSheets();
-      map.setView([p.lat, p.lng], Math.max(map.getZoom(), 17));
-      setTimeout(() => { const m = markerRefs[p.id]; if(m) m.openPopup(); }, 350);
-    });
-    body.appendChild(item);
-  });
+  points.forEach(p => body.appendChild(buildPointItemEl(p)));
 }
 
 /* ============== export GeoJSON ============== */
