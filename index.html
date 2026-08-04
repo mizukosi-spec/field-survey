@@ -2449,11 +2449,15 @@ document.getElementById("deleteYaneBtn").addEventListener("click", () => deleteC
 document.getElementById("deleteSemiBtn").addEventListener("click", () => deleteCurrentPoint());
 async function deleteCurrentPoint(){
   if(!editingId) return;
-  await idbDelete("points", editingId);
+  const idToDelete = editingId;
+  await idbDelete("points", idToDelete);
   closeSheets();
   toast("地点を削除しました");
   await renderAllPoints();
   await renderPointList();
+  if(window.__fieldApp && window.__fieldApp.deletePointRemote){
+    window.__fieldApp.deletePointRemote(idToDelete);
+  }
 }
 
 /* ============== render markers ============== */
@@ -2662,7 +2666,7 @@ document.getElementById("closeSyncBtn").addEventListener("click", closeSheets);
 
 /* ============== expose internals for the cloud sync module ============== */
 window.__fieldApp = {
-  idbGetAll, idbSet, idbGet,
+  idbGetAll, idbSet, idbGet, idbDelete,
   toast,
   openSheet, closeSheets,
   getSyncSheet: () => document.getElementById("syncSheet"),
@@ -2742,6 +2746,19 @@ async function doPull(cfg, onProgress){
   const data = await res.json();
   if(!data.ok) throw new Error(data.error || "取り込みに失敗しました");
 
+  /* サーバー側で削除済みとされている地点は、この端末にまだ残っていたら削除する */
+  let deletedLocally = 0;
+  if(Array.isArray(data.deletedIds) && data.deletedIds.length){
+    for(const id of data.deletedIds){
+      const local = await window.__fieldApp.idbGet("points", id);
+      if(local){
+        await window.__fieldApp.idbDelete("points", id);
+        deletedLocally++;
+      }
+    }
+    if(deletedLocally > 0) await window.__fieldApp.refreshUI();
+  }
+
   const remotePoints = data.points || [];
   const toImport = [];
   for(const rp of remotePoints){
@@ -2750,7 +2767,7 @@ async function doPull(cfg, onProgress){
       toImport.push({ remote: rp, local: local });
     }
   }
-  if(toImport.length === 0) return { added: 0, updated: 0 };
+  if(toImport.length === 0) return { added: 0, updated: 0, deletedLocally: deletedLocally };
 
   /* 写真のファイルIDを集める */
   const neededIds = [];
@@ -2822,7 +2839,7 @@ async function doPull(cfg, onProgress){
     if(item.local) updated++; else added++;
   }
   await window.__fieldApp.refreshUI();
-  return { added, updated };
+  return { added, updated, deletedLocally };
 }
 
 /* ---------- 送る（1件だけ。保存直後のオートシンク用） ---------- */
@@ -2834,6 +2851,17 @@ async function uploadOnePoint(cfg, point){
   });
   const data = await res.json();
   if(!data.ok) throw new Error(data.error || "送信に失敗しました");
+  return data;
+}
+/* 削除をサーバー側にも伝え、他端末の古いコピーで復活しないようにする */
+async function deleteRemote(cfg, ids){
+  const res = await fetch(cfg.endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ action: "delete", group: cfg.group, ids: ids }),
+  });
+  const data = await res.json();
+  if(!data.ok) throw new Error(data.error || "削除の送信に失敗しました");
   return data;
 }
 /* 送信済みの内容を記録しておき、次回以降は変更があった地点だけを送るようにする */
@@ -2859,6 +2887,20 @@ window.__fieldApp.autoSyncAfterSave = async function(point){
       window.__fieldApp.toast(`ほかの端末の記録も${result.added + result.updated}件取り込みました`);
     }
   }catch(e){ /* 通信できないときは静かに諦める */ }
+};
+
+/* 削除をサーバーに伝える（他端末の古いコピーで復活しないようにする） */
+window.__fieldApp.deletePointRemote = async function(id){
+  if(!navigator.onLine) return; // オフラインのときは諦める（ローカルの削除自体は済んでいる）
+  const cfg = {
+    endpoint: localStorage.getItem("fieldSync_endpoint") || DEFAULT_ENDPOINT,
+    group: localStorage.getItem("fieldSync_group") || DEFAULT_GROUP,
+  };
+  try{
+    await deleteRemote(cfg, [id]);
+  }catch(e){
+    window.__fieldApp.toast("削除をサーバーに伝えられませんでした。あとで☁ボタンで取り込み直すと復活する場合があります", true);
+  }
 };
 
 uploadBtn.addEventListener("click", async () => {
