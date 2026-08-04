@@ -2138,7 +2138,7 @@ function initPhotoField(prefix){
     input.value = "";
     if(!file) return;
     try{
-      const dataUrl = await compressImageFile(file, 1600, 0.8);
+      const dataUrl = await compressImageFile(file, 1280, 0.72);
       const cropped = await openCropTool(dataUrl);
       show(cropped);
     }catch(e){
@@ -2502,8 +2502,7 @@ async function commitPoint(point){
   await idbSet("points", point.id, point);
   closeSheets();
   toast("地点を保存しました");
-  await renderAllPoints();
-  await renderPointList();
+  upsertMarker(point);
   // 保存と同時に、他の端末への送信＆他の端末からの取り込みを裏側で試みる
   // （オフラインや通信エラー時は記録自体には影響しないよう、失敗しても無視する）
   if(window.__fieldApp && window.__fieldApp.autoSyncAfterSave){
@@ -2519,8 +2518,7 @@ async function deleteCurrentPoint(){
   await idbDelete("points", idToDelete);
   closeSheets();
   toast("地点を削除しました");
-  await renderAllPoints();
-  await renderPointList();
+  removeMarker(idToDelete);
   if(window.__fieldApp && window.__fieldApp.deletePointRemote){
     window.__fieldApp.deletePointRemote(idToDelete);
   }
@@ -2550,36 +2548,48 @@ async function renderAllPoints(){
   const allPoints = await idbGetAll("points");
   updatePointCountStatus(allPoints);
   let points = allPoints.filter(p => p.surveyType === mapFilter);
-  points.forEach(p => {
-    const hex = colorHexOf(p);
-    const firstColor = (p.color || "").split(CHOICE_SEP)[0];
-    const borderColor = (p.surveyType === "yane" && firstColor === "白") ? "#1F2430" : "#fff";
-    const shape = p.surveyType === "semi" ? "square" : "round";
-    const icon = L.divIcon({
-      className: "pt-marker",
-      html: `<div class="core ${shape}" style="background:${hex}; border-color:${borderColor}">${p.number ? escapeHtml(String(p.number)) : ""}</div>`,
-      iconSize: [26,26], iconAnchor: [13,13],
-    });
-    const marker = L.marker([p.lat, p.lng], { icon }).addTo(pointsLayer);
-    marker.bindPopup(() => buildPopupHtml(p), { maxWidth: 260 });
-    marker.on("popupopen", (e) => {
-      const el = e.popup.getElement();
-      const editEl = el.querySelector("[data-edit]");
-      const delEl = el.querySelector("[data-del]");
-      if(editEl) editEl.addEventListener("click", () => { map.closePopup(); openPointForm(p.surveyType, p); });
-      if(delEl) delEl.addEventListener("click", async () => {
-        const idToDelete = p.id;
-        await idbDelete("points", idToDelete);
-        map.closePopup();
-        toast("地点を削除しました");
-        renderAllPoints(); renderPointList();
-        if(window.__fieldApp && window.__fieldApp.deletePointRemote){
-          window.__fieldApp.deletePointRemote(idToDelete);
-        }
-      });
-    });
-    markerRefs[p.id] = marker;
+  points.forEach(p => { markerRefs[p.id] = createMarker(p); });
+}
+function createMarker(p){
+  const hex = colorHexOf(p);
+  const firstColor = (p.color || "").split(CHOICE_SEP)[0];
+  const borderColor = (p.surveyType === "yane" && firstColor === "白") ? "#1F2430" : "#fff";
+  const shape = p.surveyType === "semi" ? "square" : "round";
+  const icon = L.divIcon({
+    className: "pt-marker",
+    html: `<div class="core ${shape}" style="background:${hex}; border-color:${borderColor}">${p.number ? escapeHtml(String(p.number)) : ""}</div>`,
+    iconSize: [26,26], iconAnchor: [13,13],
   });
+  const marker = L.marker([p.lat, p.lng], { icon }).addTo(pointsLayer);
+  marker.bindPopup(() => buildPopupHtml(p), { maxWidth: 260 });
+  marker.on("popupopen", (e) => {
+    const el = e.popup.getElement();
+    const editEl = el.querySelector("[data-edit]");
+    const delEl = el.querySelector("[data-del]");
+    if(editEl) editEl.addEventListener("click", () => { map.closePopup(); openPointForm(p.surveyType, p); });
+    if(delEl) delEl.addEventListener("click", async () => {
+      const idToDelete = p.id;
+      await idbDelete("points", idToDelete);
+      map.closePopup();
+      toast("地点を削除しました");
+      removeMarker(idToDelete);
+      if(window.__fieldApp && window.__fieldApp.deletePointRemote){
+        window.__fieldApp.deletePointRemote(idToDelete);
+      }
+    });
+  });
+  return marker;
+}
+/* 1件だけ保存・削除したときに、全件を読み直して全ピンを作り直す代わりに
+   その1件のピンだけを差し替える（地点数が増えても保存が重くならないようにするため） */
+function removeMarker(id){
+  const m = markerRefs[id];
+  if(m){ pointsLayer.removeLayer(m); delete markerRefs[id]; }
+}
+function upsertMarker(p){
+  removeMarker(p.id);
+  if(p.surveyType !== mapFilter) return; // 今表示していない種類なら、ピンは出さない
+  markerRefs[p.id] = createMarker(p);
 }
 function buildPopupHtml(p){
   if(p.surveyType === "semi"){
