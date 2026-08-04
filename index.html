@@ -1113,7 +1113,7 @@ html,body{
   <div class="title-chip"><span class="dot"></span><span id="areaLabel">フィールド調べ</span></div>
 </div>
 <div id="topbarRight">
-  <div class="icon-btn" id="oldMapToggleBtn" title="旧版地形図(明治期)と切り替え">🕰️</div>
+  <div class="icon-btn" id="oldMapToggleBtn" title="航空写真／旧版地形図(明治期)／地理院地図を切り替え">🕰️</div>
   <div class="icon-btn" id="markerStyleBtn" title="ポイント表示を切り替え(番号／点のみ)">#</div>
   <div class="icon-btn" id="locateBtn" title="現在地をリアルタイム表示">◎</div>
   <div class="icon-btn" id="listBtn" title="地点一覧">☰</div>
@@ -1686,35 +1686,42 @@ const tileLayer = new OfflineTileLayer({ tileSize: 256, updateWhenIdle: true, ke
 tileLayer.addTo(map);
 
 /*
- * 旧版地形図（今昔マップ on the web・中京圏 1888~1898年ごろ）を切り替え表示。
- * こちらはオフライン保存はせず、通信があるときだけオンラインで読み込む。
+ * 背景地図の切り替え：航空写真(オフライン保存対応) → 旧版地形図(今昔マップ) → 地理院地図(標準地図)。
+ * 旧版地形図・標準地図はオフライン保存はせず、通信があるときだけオンラインで読み込む。
  * 利用規約により「今昔マップ on the web」の表示を必須としている。
  */
 const oldMapLayer = L.tileLayer("https://ktgis.net/kjmapw/kjtilemap/chukyo/2man/{z}/{x}/{y}.png", {
   tms: true, minZoom: 8, maxZoom: MAP_MAX_ZOOM, maxNativeZoom: 16, tileSize: 256, attribution: ""
 });
-let oldMapActive = false;
+const stdMapLayer = L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png", {
+  minZoom: 5, maxZoom: MAP_MAX_ZOOM, maxNativeZoom: 18, tileSize: 256, attribution: ""
+});
+const BASE_LAYERS = ["aerial", "old", "std"];
+let baseLayerMode = "aerial";
+function currentBaseLayer(){
+  return baseLayerMode === "old" ? oldMapLayer : baseLayerMode === "std" ? stdMapLayer : tileLayer;
+}
 document.getElementById("oldMapToggleBtn").addEventListener("click", () => {
-  oldMapActive = !oldMapActive;
   const btn = document.getElementById("oldMapToggleBtn");
   const credit = document.getElementById("oldMapCredit");
-  if(oldMapActive){
-    if(!navigator.onLine){
-      toast("旧版地形図はオンラインのときだけ表示できます", true);
-      oldMapActive = false;
-      return;
-    }
-    tileLayer.remove();
-    oldMapLayer.addTo(map);
-    btn.classList.add("active");
-    credit.style.display = "block";
-    toast("旧版地形図（明治期・中京圏）に切り替えました");
-  } else {
-    oldMapLayer.remove();
-    tileLayer.addTo(map);
-    btn.classList.remove("active");
-    credit.style.display = "none";
+  const nextMode = BASE_LAYERS[(BASE_LAYERS.indexOf(baseLayerMode) + 1) % BASE_LAYERS.length];
+
+  if(nextMode !== "aerial" && !navigator.onLine){
+    toast("この地図はオンラインのときだけ表示できます", true);
+    return;
   }
+
+  currentBaseLayer().remove();
+  baseLayerMode = nextMode;
+  currentBaseLayer().addTo(map);
+
+  btn.classList.toggle("active", baseLayerMode !== "aerial");
+  credit.style.display = (baseLayerMode === "old") ? "block" : "none";
+
+  const label = baseLayerMode === "old" ? "旧版地形図（明治期・中京圏）"
+    : baseLayerMode === "std" ? "地理院地図（標準地図）"
+    : "航空写真";
+  toast(`${label}に切り替えました`);
 });
 
 const pointsLayer = L.layerGroup().addTo(map);
@@ -2560,11 +2567,10 @@ async function renderAllPoints(){
 }
 let markerStyle = "number"; // "number" | "dot"
 function createMarker(p){
-  const hex = colorHexOf(p);
-  const firstColor = (p.color || "").split(CHOICE_SEP)[0];
-  const borderColor = (p.surveyType === "yane" && firstColor === "白") ? "#1F2430" : "#fff";
-  const shape = p.surveyType === "semi" ? "square" : "round";
   const isDot = markerStyle === "dot";
+  const hex = (isDot && p.surveyType === "yane") ? COLOR_HEX["赤"] : colorHexOf(p);
+  const borderColor = (hex === COLOR_HEX["白"]) ? "#1F2430" : "#fff";
+  const shape = p.surveyType === "semi" ? "square" : "round";
   const icon = L.divIcon({
     className: "pt-marker",
     html: isDot
