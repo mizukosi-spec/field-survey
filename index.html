@@ -998,6 +998,7 @@ html,body{
 }
 .pt-marker .core.round{ border-radius:50%; }
 .pt-marker .core.square{ border-radius:6px; }
+.pt-marker .core.dot{ width:12px; height:12px; border-width:1.5px; }
 .leaflet-popup-content-wrapper{ background:#ffffff; color:#161a20; border-radius:12px; }
 .leaflet-popup-tip{ background:#ffffff; }
 .leaflet-popup-content{ margin:12px 14px; font-family:var(--font-ui); width:240px !important; }
@@ -1113,6 +1114,7 @@ html,body{
 </div>
 <div id="topbarRight">
   <div class="icon-btn" id="oldMapToggleBtn" title="旧版地形図(明治期)と切り替え">🕰️</div>
+  <div class="icon-btn" id="markerStyleBtn" title="ポイント表示を切り替え(番号／点のみ)">#</div>
   <div class="icon-btn" id="locateBtn" title="現在地をリアルタイム表示">◎</div>
   <div class="icon-btn" id="listBtn" title="地点一覧">☰</div>
   <div class="icon-btn" id="toolsBtn" title="共有・ダウンロード" style="font-size:13px; letter-spacing:-1px;">☁⬇</div>
@@ -1716,6 +1718,11 @@ document.getElementById("oldMapToggleBtn").addEventListener("click", () => {
 });
 
 const pointsLayer = L.layerGroup().addTo(map);
+document.getElementById("markerStyleBtn").addEventListener("click", () => {
+  markerStyle = (markerStyle === "number") ? "dot" : "number";
+  document.getElementById("markerStyleBtn").textContent = (markerStyle === "number") ? "#" : "●";
+  renderAllPoints();
+});
 
 /*
  * iOS Safariはアドレスバーの表示・非表示で実際の表示領域が変わるが、
@@ -2551,15 +2558,19 @@ async function renderAllPoints(){
   let points = allPoints.filter(p => p.surveyType === mapFilter);
   points.forEach(p => { markerRefs[p.id] = createMarker(p); });
 }
+let markerStyle = "number"; // "number" | "dot"
 function createMarker(p){
   const hex = colorHexOf(p);
   const firstColor = (p.color || "").split(CHOICE_SEP)[0];
   const borderColor = (p.surveyType === "yane" && firstColor === "白") ? "#1F2430" : "#fff";
   const shape = p.surveyType === "semi" ? "square" : "round";
+  const isDot = markerStyle === "dot";
   const icon = L.divIcon({
     className: "pt-marker",
-    html: `<div class="core ${shape}" style="background:${hex}; border-color:${borderColor}">${p.number ? escapeHtml(String(p.number)) : ""}</div>`,
-    iconSize: [26,26], iconAnchor: [13,13],
+    html: isDot
+      ? `<div class="core ${shape} dot" style="background:${hex}; border-color:${borderColor}"></div>`
+      : `<div class="core ${shape}" style="background:${hex}; border-color:${borderColor}">${p.number ? escapeHtml(String(p.number)) : ""}</div>`,
+    iconSize: isDot ? [12,12] : [26,26], iconAnchor: isDot ? [6,6] : [13,13],
   });
   const marker = L.marker([p.lat, p.lng], { icon }).addTo(pointsLayer);
   marker.bindPopup(() => buildPopupHtml(p), { maxWidth: 260 });
