@@ -1118,7 +1118,7 @@ html,body{
   <div class="title-chip"><span class="dot"></span><span id="areaLabel">フィールド調べ</span></div>
 </div>
 <div id="topbarRight">
-  <div class="icon-btn" id="oldMapToggleBtn" title="航空写真／旧版地形図(明治期)／地理院地図を切り替え">🕰️</div>
+  <div class="icon-btn" id="oldMapToggleBtn" title="航空写真／旧版地形図(明治期)／地理院地図／土地利用図を切り替え">🕰️</div>
   <div class="icon-btn" id="markerStyleBtn" title="ポイント表示を切り替え(番号／点のみ)">#</div>
   <div class="icon-btn" id="locateBtn" title="現在地をリアルタイム表示">◎</div>
   <div class="icon-btn" id="listBtn" title="地点一覧">☰</div>
@@ -1701,10 +1701,75 @@ const oldMapLayer = L.tileLayer("https://ktgis.net/kjmapw/kjtilemap/chukyo/2man/
 const stdMapLayer = L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png", {
   minZoom: 5, maxZoom: MAP_MAX_ZOOM, maxNativeZoom: 18, tileSize: 256, attribution: ""
 });
-const BASE_LAYERS = ["aerial", "old", "std"];
+
+/*
+ * 土地利用図（国土地理院「宅地利用動向調査」中部圏 2003年）を、
+ * 道路=黒／水部=水色／田畑=黄緑／建物等=黄色 の4色に塗り分けて表示する。
+ * 元データは国土地理院がすでに色分け済みの画像（数値地図5000）なので、
+ * その色を1ピクセルずつ判定して塗り替えている（見た目の近似であり、完全な精度ではない）。
+ * ブラウザの制約（CORS）により色の判定ができない場合は、元の色のまま表示する。
+ */
+function recolorLandUsePixels(px){
+  for(let i = 0; i < px.length; i += 4){
+    const a = px[i+3];
+    if(a === 0) continue;
+    const r = px[i], g = px[i+1], b = px[i+2];
+    if(r > 240 && g > 240 && b > 240){ px[i+3] = 30; continue; } // 白い背景はほぼ透明に
+    const max = Math.max(r,g,b), min = Math.min(r,g,b);
+    const light = (max+min) / 2;
+    const sat = max === min ? 0 : (max-min) / (255 - Math.abs(2*light-255));
+    let hue = 0;
+    if(max !== min){
+      if(max === r) hue = 60 * (((g-b)/(max-min)) % 6);
+      else if(max === g) hue = 60 * ((b-r)/(max-min) + 2);
+      else hue = 60 * ((r-g)/(max-min) + 4);
+      if(hue < 0) hue += 360;
+    }
+    let target;
+    if(sat < 0.15){
+      target = [30, 33, 40];          // 彩度が低い＝グレー〜黒 → 道路
+    } else if(hue >= 150 && hue < 260){
+      target = [126, 200, 227];       // 青〜水色 → 水部
+    } else if(hue >= 70 && hue < 150){
+      target = [198, 224, 106];       // 緑系 → 田畑
+    } else {
+      target = [255, 213, 74];        // 赤・橙・黄・ピンク系 → 建物・宅地等
+    }
+    px[i] = target[0]; px[i+1] = target[1]; px[i+2] = target[2];
+  }
+}
+const LandUseRecolorLayer = L.GridLayer.extend({
+  createTile: function(coords, done){
+    const tile = document.createElement("canvas");
+    tile.width = 256; tile.height = 256;
+    const ctx = tile.getContext("2d");
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0, 256, 256);
+      try{
+        const data = ctx.getImageData(0, 0, 256, 256);
+        recolorLandUsePixels(data.data);
+        ctx.putImageData(data, 0, 0);
+      }catch(e){ /* CORSなどで読み取れない場合は元の色のまま表示 */ }
+      done(null, tile);
+    };
+    img.onerror = () => done(null, tile);
+    img.src = `https://cyberjapandata.gsi.go.jp/xyz/lum4bl_chubu2003/${coords.z}/${coords.x}/${coords.y}.png`;
+    return tile;
+  }
+});
+const landUseLayer = new LandUseRecolorLayer({
+  minZoom: 10, maxZoom: MAP_MAX_ZOOM, minNativeZoom: 13, maxNativeZoom: 16, tileSize: 256
+});
+
+const BASE_LAYERS = ["aerial", "old", "std", "landuse"];
 let baseLayerMode = "aerial";
 function currentBaseLayer(){
-  return baseLayerMode === "old" ? oldMapLayer : baseLayerMode === "std" ? stdMapLayer : tileLayer;
+  if(baseLayerMode === "old") return oldMapLayer;
+  if(baseLayerMode === "std") return stdMapLayer;
+  if(baseLayerMode === "landuse") return landUseLayer;
+  return tileLayer;
 }
 document.getElementById("oldMapToggleBtn").addEventListener("click", () => {
   const btn = document.getElementById("oldMapToggleBtn");
@@ -1725,6 +1790,7 @@ document.getElementById("oldMapToggleBtn").addEventListener("click", () => {
 
   const label = baseLayerMode === "old" ? "旧版地形図（明治期・中京圏）"
     : baseLayerMode === "std" ? "地理院地図（標準地図）"
+    : baseLayerMode === "landuse" ? "土地利用図（2003年・4色分け）"
     : "航空写真";
   toast(`${label}に切り替えました`);
 });
