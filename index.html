@@ -1714,7 +1714,7 @@ function recolorLandUsePixels(px){
     const a = px[i+3];
     if(a === 0) continue;
     const r = px[i], g = px[i+1], b = px[i+2];
-    if(r > 240 && g > 240 && b > 240){ px[i+3] = 30; continue; } // 白い背景はほぼ透明に
+    if(r > 252 && g > 252 && b > 252){ px[i+3] = 30; continue; } // ほぼ純白の背景だけ透明に
     const max = Math.max(r,g,b), min = Math.min(r,g,b);
     const light = (max+min) / 2;
     const sat = max === min ? 0 : (max-min) / (255 - Math.abs(2*light-255));
@@ -1726,7 +1726,7 @@ function recolorLandUsePixels(px){
       if(hue < 0) hue += 360;
     }
     let target;
-    if(sat < 0.15){
+    if(sat < 0.20){
       target = [30, 33, 40];          // 彩度が低い＝グレー〜黒 → 道路
     } else if(hue >= 150 && hue < 260){
       target = [126, 200, 227];       // 青〜水色 → 水部
