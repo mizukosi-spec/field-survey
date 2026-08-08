@@ -21,12 +21,12 @@
   }
   .btn-back{ background:#333d4a; color:#fff; }
   .btn-go{ background:var(--accent); color:#1a0e0a; }
-  #sizeToggle{ display:flex; gap:6px; background:#0f141c; border-radius:8px; padding:3px; }
-  #sizeToggle .size-opt{
+  #sizeToggle, #typeToggle{ display:flex; gap:6px; background:#0f141c; border-radius:8px; padding:3px; }
+  #sizeToggle .size-opt, #typeToggle .type-opt{
     border:none; background:transparent; color:#9aa4b2; font-size:13px; font-weight:700;
     padding:7px 12px; border-radius:6px; cursor:pointer;
   }
-  #sizeToggle .size-opt.active{ background:var(--accent); color:#1a0e0a; }
+  #sizeToggle .size-opt.active, #typeToggle .type-opt.active{ background:var(--accent); color:#1a0e0a; }
   #status{ padding:14px; color:#555; font-size:13px; }
   #grid{
     display:flex; flex-wrap:wrap; gap:2mm;
@@ -51,8 +51,12 @@
 <body>
 
 <div id="toolbar">
-  <div class="title" id="toolbarTitle">写真印刷シート(3cm×3cm・A4)</div>
-  <div style="display:flex; gap:8px; align-items:center;">
+  <div class="title" id="toolbarTitle">屋根マーク 写真印刷シート(3cm×3cm・A4)</div>
+  <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+    <div id="typeToggle">
+      <button class="type-opt active" data-type="yane">屋根マーク</button>
+      <button class="type-opt" data-type="semi">ぬけがら</button>
+    </div>
     <div id="sizeToggle">
       <button class="size-opt active" data-size="30">3cm</button>
       <button class="size-opt" data-size="20">2cm</button>
@@ -91,29 +95,31 @@ function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
 
-(async function(){
+let currentType = "yane";
+let allPoints = null;
+
+function renderGrid(){
   const statusEl = document.getElementById("status");
   const grid = document.getElementById("grid");
-  let points = [];
-  try {
-    points = await idbGetAll("points");
-  } catch(e){
+  grid.innerHTML = "";
+
+  if(!allPoints){
     statusEl.textContent = "データを読み込めませんでした。地図アプリを一度開いてから、もう一度お試しください。";
     return;
   }
-  const withPhoto = points.filter(p => p.photo);
-  const withoutPhoto = points.length - withPhoto.length;
-  withPhoto.sort((a,b) => {
-    if(a.surveyType !== b.surveyType) return a.surveyType === "yane" ? -1 : 1;
-    return (parseInt(a.number,10)||0) - (parseInt(b.number,10)||0);
-  });
+
+  const typeLabel = currentType === "yane" ? "屋根マーク" : "ぬけがら";
+  const typePoints = allPoints.filter(p => p.surveyType === currentType);
+  const withPhoto = typePoints.filter(p => p.photo);
+  const withoutPhoto = typePoints.length - withPhoto.length;
+  withPhoto.sort((a,b) => (parseInt(a.number,10)||0) - (parseInt(b.number,10)||0));
 
   if(withPhoto.length === 0){
-    statusEl.textContent = "写真が登録されている地点がありません。";
+    statusEl.textContent = `${typeLabel}で、写真が登録されている地点がありません。`;
     return;
   }
 
-  statusEl.textContent = `写真 ${withPhoto.length} 件を並べました。` +
+  statusEl.textContent = `${typeLabel}の写真 ${withPhoto.length} 件を並べました。` +
     (withoutPhoto > 0 ? `(写真のない地点 ${withoutPhoto} 件は除外)` : "");
 
   withPhoto.forEach(p => {
@@ -122,6 +128,15 @@ function escapeHtml(s){
     cell.innerHTML = `<img src="${p.photo}"><div class="num">${escapeHtml(p.number || "")}</div>`;
     grid.appendChild(cell);
   });
+}
+
+(async function(){
+  try {
+    allPoints = await idbGetAll("points");
+  } catch(e){
+    allPoints = null;
+  }
+  renderGrid();
 })();
 
 document.getElementById("goBtn").addEventListener("click", () => window.print());
@@ -132,10 +147,26 @@ document.querySelectorAll("#sizeToggle .size-opt").forEach(btn => {
     btn.classList.add("active");
     const mm = btn.getAttribute("data-size");
     document.documentElement.style.setProperty("--cell-size", mm + "mm");
-    document.getElementById("toolbarTitle").textContent = `写真印刷シート(${mm==="30"?"3":"2"}cm×${mm==="30"?"3":"2"}cm・A4)`;
+    updateTitle();
   });
 });
 
+document.querySelectorAll("#typeToggle .type-opt").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#typeToggle .type-opt").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentType = btn.getAttribute("data-type");
+    updateTitle();
+    renderGrid();
+  });
+});
+
+function updateTitle(){
+  const mm = document.querySelector("#sizeToggle .size-opt.active").getAttribute("data-size");
+  const typeLabel = currentType === "yane" ? "屋根マーク" : "ぬけがら";
+  document.getElementById("toolbarTitle").textContent =
+    `${typeLabel} 写真印刷シート(${mm==="30"?"3":"2"}cm×${mm==="30"?"3":"2"}cm・A4)`;
+}
 </script>
 </body>
 </html>
