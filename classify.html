@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>屋根の分類 — フィールド調べ</title>
+<style>
+  :root{
+    --panel-bg:#0f141c; --panel:#1c2430; --panel-border: rgba(255,255,255,0.09);
+    --text-primary:#F2F4F7; --text-secondary:#93A0B4;
+    --accent:#FF6B4A; --accent-dim: rgba(255,107,74,0.18);
+    --success:#34D399; --warn:#FBBF24;
+    --font-ui: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; font-family:var(--font-ui); background:var(--panel-bg); color:var(--text-primary);
+    padding-bottom:40px;
+  }
+  #toolbar{
+    position:sticky; top:0; z-index:5;
+    display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+    padding:12px 14px; padding-top:calc(12px + env(safe-area-inset-top));
+    background:var(--panel); border-bottom:1px solid var(--panel-border);
+  }
+  #toolbar .title{ font-size:14px; font-weight:700; }
+  #toolbar .sub{ font-size:12px; color:var(--text-secondary); margin-top:2px; }
+  #toolbar .right{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .btn{
+    border:none; border-radius:8px; padding:9px 14px; font-size:13px; font-weight:700; cursor:pointer;
+    text-decoration:none; display:inline-block; color:#fff; background:#333d4a;
+  }
+  .btn-back{ background:#333d4a; }
+  .btn-filter{ background:#333d4a; }
+  .btn-filter.active{ background:var(--accent); color:#1a0e0a; }
+  #status{ padding:14px; color:var(--text-secondary); font-size:13px; }
+
+  #list{ max-width:640px; margin:0 auto; padding:0 12px; display:flex; flex-direction:column; gap:12px; }
+  .card{
+    background:var(--panel); border:1px solid var(--panel-border); border-radius:14px;
+    padding:14px; display:flex; gap:12px; flex-wrap:wrap;
+  }
+  .card.done{ border-color: rgba(52,211,153,0.5); }
+  .card .photo-wrap{ flex:0 0 auto; }
+  .card img{
+    width:120px; height:120px; object-fit:cover; border-radius:10px; display:block; background:#000;
+  }
+  .card .no-photo{
+    width:120px; height:120px; border-radius:10px; background:#000;
+    display:flex; align-items:center; justify-content:center; color:var(--text-secondary); font-size:11px; text-align:center;
+  }
+  .card .main{ flex:1 1 200px; min-width:200px; }
+  .card .num-row{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .card .num-badge{
+    background:var(--accent-dim); color:var(--accent); font-weight:800; font-size:13px;
+    border-radius:8px; padding:3px 9px;
+  }
+  .card .loc{ font-size:12px; color:var(--text-secondary); }
+  .chip-row{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .chip{
+    border:1px solid var(--panel-border); background:#151b25; color:var(--text-primary);
+    font-size:12px; font-weight:600; padding:7px 11px; border-radius:999px; cursor:pointer;
+    white-space:nowrap;
+  }
+  .chip.active{ background:var(--accent); border-color:var(--accent); color:#1a0e0a; }
+  .other-input{
+    margin-top:8px; width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--panel-border);
+    background:#151b25; color:var(--text-primary); font-size:13px; display:none;
+  }
+  .other-input.show{ display:block; }
+  .save-hint{ font-size:11px; color:var(--success); margin-top:6px; height:14px; }
+  .empty-state{ padding:40px 20px; text-align:center; color:var(--text-secondary); font-size:13px; }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <div>
+    <div class="title">屋根の分類</div>
+    <div class="sub" id="progressText">読み込み中…</div>
+  </div>
+  <div class="right">
+    <button class="btn btn-filter" id="unclassifiedOnlyBtn">未分類のみ</button>
+    <a class="btn btn-back" href="index.html">地図に戻る</a>
+  </div>
+</div>
+<div id="status"></div>
+<div id="list"></div>
+
+<script>
+const DB_NAME = "gsiFieldMapDB";
+const DB_VERSION = 1;
+const ROOF_CLASS_OPTIONS = ["水", "角字の水", "その他の水", "金色の家紋・寺社紋", "瓦色の家紋・寺社紋", "その他"];
+
+function openDB(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if(!db.objectStoreNames.contains("tiles")) db.createObjectStore("tiles");
+      if(!db.objectStoreNames.contains("points")) db.createObjectStore("points", {keyPath:"id"});
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+function idbGetAll(store){
+  return openDB().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(store, "readonly");
+    const r = tx.objectStore(store).getAll();
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  }));
+}
+function idbSet(store, key, value){
+  return openDB().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(store, "readwrite");
+    tx.objectStore(store).put(value);
+    tx.oncomplete = () => res();
+    tx.onerror = () => rej(tx.error);
+  }));
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+/* 他の端末・スプレッドシートへの反映は、地図アプリ(index.html)と同じ送信先設定を使う */
+function getSyncCfg(){
+  return {
+    endpoint: localStorage.getItem("fieldSync_endpoint") || "",
+    group: localStorage.getItem("fieldSync_group") || "",
+    device: (localStorage.getItem("fieldSync_device") || "").trim(),
+  };
+}
+async function pushOnePoint(point){
+  const cfg = getSyncCfg();
+  if(!cfg.endpoint || !cfg.group) return; // 送信先が未設定ならローカル保存のみ
+  if(!navigator.onLine) return;
+  try{
+    await fetch(cfg.endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ group: cfg.group, device: cfg.device, points: [point] }),
+    });
+  }catch(e){ /* 通信できないときは静かに諦める（記録自体はローカルに保存済み） */ }
+}
+
+let allYanePoints = [];
+let showUnclassifiedOnly = false;
+
+function isClassified(p){ return !!(p.roofClass); }
+
+function updateProgressText(){
+  const total = allYanePoints.length;
+  const done = allYanePoints.filter(isClassified).length;
+  document.getElementById("progressText").textContent =
+    total === 0 ? "屋根マークのデータがありません" : `分類済み ${done} / ${total} 件`;
+}
+
+function renderList(){
+  const listEl = document.getElementById("list");
+  listEl.innerHTML = "";
+  let points = allYanePoints.slice().sort((a,b) => (parseInt(a.number,10)||0) - (parseInt(b.number,10)||0));
+  if(showUnclassifiedOnly) points = points.filter(p => !isClassified(p));
+
+  if(points.length === 0){
+    listEl.innerHTML = `<div class="empty-state">${showUnclassifiedOnly ? "未分類の屋根マークはありません。" : "屋根マークのデータがまだありません。"}</div>`;
+    return;
+  }
+
+  points.forEach(p => listEl.appendChild(buildCard(p)));
+}
+
+function buildCard(p){
+  const card = document.createElement("div");
+  card.className = "card" + (isClassified(p) ? " done" : "");
+  card.dataset.id = p.id;
+
+  const photoHtml = p.photo
+    ? `<img src="${p.photo}" alt="">`
+    : `<div class="no-photo">写真なし</div>`;
+
+  const locText = (p.location && p.location.text) || "";
+
+  card.innerHTML = `
+    <div class="photo-wrap">${photoHtml}</div>
+    <div class="main">
+      <div class="num-row">
+        <div class="num-badge">${escapeHtml(p.number || "-")}</div>
+        <div class="loc">${escapeHtml(locText)}</div>
+      </div>
+      <div class="chip-row" data-role="chips"></div>
+      <input type="text" class="other-input" placeholder="その他の内容を入力" data-role="other-input">
+      <div class="save-hint" data-role="hint"></div>
+    </div>
+  `;
+
+  const chipRow = card.querySelector('[data-role="chips"]');
+  const otherInput = card.querySelector('[data-role="other-input"]');
+  const hint = card.querySelector('[data-role="hint"]');
+
+  ROOF_CLASS_OPTIONS.forEach(opt => {
+    const chip = document.createElement("div");
+    chip.className = "chip" + (p.roofClass === opt ? " active" : "");
+    chip.textContent = opt;
+    chip.addEventListener("click", async () => {
+      chipRow.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      p.roofClass = opt;
+      if(opt === "その他"){
+        otherInput.classList.add("show");
+        otherInput.focus();
+      } else {
+        otherInput.classList.remove("show");
+        p.roofClassOther = "";
+      }
+      await saveClassification(p, card, hint);
+    });
+    chipRow.appendChild(chip);
+  });
+
+  if(p.roofClass === "その他"){
+    otherInput.classList.add("show");
+    otherInput.value = p.roofClassOther || "";
+  }
+  let otherSaveTimer = null;
+  otherInput.addEventListener("input", () => {
+    p.roofClassOther = otherInput.value;
+    clearTimeout(otherSaveTimer);
+    otherSaveTimer = setTimeout(() => saveClassification(p, card, hint), 500);
+  });
+
+  return card;
+}
+
+async function saveClassification(p, card, hint){
+  p.updatedAt = new Date().toISOString();
+  await idbSet("points", p.id, p);
+  card.classList.toggle("done", isClassified(p));
+  hint.textContent = "保存しました";
+  setTimeout(() => { hint.textContent = ""; }, 1500);
+  updateProgressText();
+  pushOnePoint(p); // 送信は裏側で試みる（失敗してもローカルの記録には影響しない）
+}
+
+document.getElementById("unclassifiedOnlyBtn").addEventListener("click", (e) => {
+  showUnclassifiedOnly = !showUnclassifiedOnly;
+  e.target.classList.toggle("active", showUnclassifiedOnly);
+  renderList();
+});
+
+(async function(){
+  const statusEl = document.getElementById("status");
+  try{
+    const all = await idbGetAll("points");
+    allYanePoints = all.filter(p => p.surveyType === "yane");
+  }catch(e){
+    statusEl.textContent = "データを読み込めませんでした。地図アプリを一度開いてから、もう一度お試しください。";
+    return;
+  }
+  updateProgressText();
+  renderList();
+})();
+</script>
+</body>
+</html>
