@@ -1763,6 +1763,45 @@ const landUseLayer = new LandUseRecolorLayer({
   minZoom: 10, maxZoom: MAP_MAX_ZOOM, minNativeZoom: 13, maxNativeZoom: 16, tileSize: 256
 });
 
+/*
+ * 土地利用図の塗り分けだけだと道路が埋もれて見えなくなるため、
+ * 別の地図（淡色地図）から「濃い部分（道路や輪郭線）」だけを抜き出し、
+ * それ以外を透明にして、黒い線として土地利用図の上に重ねる。
+ */
+const RoadLineOverlay = L.GridLayer.extend({
+  createTile: function(coords, done){
+    const tile = document.createElement("canvas");
+    tile.width = 256; tile.height = 256;
+    const ctx = tile.getContext("2d");
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0, 256, 256);
+      try{
+        const data = ctx.getImageData(0, 0, 256, 256);
+        const px = data.data;
+        for(let i = 0; i < px.length; i += 4){
+          const r = px[i], g = px[i+1], b = px[i+2];
+          const lum = (r + g + b) / 3;
+          if(lum < 190){
+            px[i] = 20; px[i+1] = 22; px[i+2] = 28; px[i+3] = 255; // 道路・輪郭など濃い部分だけ黒で残す
+          } else {
+            px[i+3] = 0; // それ以外は透明にして下の色を見せる
+          }
+        }
+        ctx.putImageData(data, 0, 0);
+      }catch(e){ ctx.clearRect(0, 0, 256, 256); } // 読み取れない場合は何も描かない
+      done(null, tile);
+    };
+    img.onerror = () => done(null, tile);
+    img.src = `https://cyberjapandata.gsi.go.jp/xyz/pale/${coords.z}/${coords.x}/${coords.y}.png`;
+    return tile;
+  }
+});
+const roadLineOverlay = new RoadLineOverlay({
+  minZoom: 10, maxZoom: MAP_MAX_ZOOM, minNativeZoom: 13, maxNativeZoom: 18, tileSize: 256
+});
+
 const BASE_LAYERS = ["aerial", "old", "std", "landuse"];
 let baseLayerMode = "aerial";
 function currentBaseLayer(){
@@ -1781,9 +1820,12 @@ document.getElementById("oldMapToggleBtn").addEventListener("click", () => {
     return;
   }
 
+  const wasLanduse = baseLayerMode === "landuse";
   currentBaseLayer().remove();
+  if(wasLanduse) roadLineOverlay.remove();
   baseLayerMode = nextMode;
   currentBaseLayer().addTo(map);
+  if(baseLayerMode === "landuse") roadLineOverlay.addTo(map);
 
   btn.classList.toggle("active", baseLayerMode !== "aerial");
   credit.style.display = (baseLayerMode === "old") ? "block" : "none";
@@ -3048,6 +3090,8 @@ async function doPull(cfg, onProgress){
       houseType: r.houseType || "",
       color: r.color || "",
       colorOther: "",
+      roofClass: r.roofClass || "",
+      roofClassOther: r.roofClassOther || "",
       semiSpecies: r.semiSpecies || "",
       semiPart: r.semiPart || "",
       semiDirection: r.semiDirection || "",
