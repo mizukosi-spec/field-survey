@@ -120,6 +120,22 @@ function idbSet(store, key, value){
     tx.onerror = () => rej(tx.error);
   }));
 }
+function idbGet(store, key){
+  return openDB().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(store, "readonly");
+    const r = tx.objectStore(store).get(key);
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  }));
+}
+function idbDelete(store, key){
+  return openDB().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(store, "readwrite");
+    tx.objectStore(store).delete(key);
+    tx.oncomplete = () => res();
+    tx.onerror = () => rej(tx.error);
+  }));
+}
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
@@ -143,6 +159,73 @@ async function pushOnePoint(point){
       body: JSON.stringify({ group: cfg.group, device: cfg.device, points: [point] }),
     });
   }catch(e){ /* 通信できないときは静かに諦める（記録自体はローカルに保存済み） */ }
+}
+
+/* このページを開いたときに、最新のデータ（他の端末が追加・変更したぶん）を先に取り込む */
+async function pullLatest(){
+  const cfg = getSyncCfg();
+  if(!cfg.endpoint || !cfg.group || !navigator.onLine) return { imported: 0 };
+  try{
+    const url = cfg.endpoint + (cfg.endpoint.indexOf("?") >= 0 ? "&" : "?") +
+      "action=pull&group=" + encodeURIComponent(cfg.group);
+    const res = await fetch(url);
+    const data = await res.json();
+    if(!data.ok) return { imported: 0 };
+
+    if(Array.isArray(data.deletedIds)){
+      for(const id of data.deletedIds){
+        try{ await idbDelete("points", id); }catch(e){}
+      }
+    }
+
+    const remotePoints = (data.points || []).filter(r => r.surveyType === "yane");
+    const toImport = [];
+    for(const r of remotePoints){
+      const local = await idbGet("points", r.id);
+      if(!local || (r.updatedAt || "") > (local.updatedAt || "")) toImport.push({ remote: r, local: local });
+    }
+    if(toImport.length === 0) return { imported: 0 };
+
+    const neededIds = [];
+    toImport.forEach(item => { if(item.remote.photo_id) neededIds.push(item.remote.photo_id); });
+    const imageMap = {};
+    const BATCH = 5;
+    const chunks = [];
+    for(let i = 0; i < neededIds.length; i += BATCH) chunks.push(neededIds.slice(i, i + BATCH));
+    await Promise.all(chunks.map(async (chunk) => {
+      if(chunk.length === 0) return;
+      try{
+        const url2 = cfg.endpoint + (cfg.endpoint.indexOf("?") >= 0 ? "&" : "?") +
+          "action=images&ids=" + encodeURIComponent(chunk.join(","));
+        const res2 = await fetch(url2);
+        const idata = await res2.json();
+        if(idata.ok && idata.images) Object.assign(imageMap, idata.images);
+      }catch(e){ /* 一部の画像が取れなくても他は続ける */ }
+    }));
+
+    for(const item of toImport){
+      const r = item.remote;
+      let photo;
+      if(r.photo_id && imageMap[r.photo_id]) photo = imageMap[r.photo_id];
+      else if(r.photo_id) photo = (item.local && item.local.photo) || null; // 取得失敗時は今ある写真を残す
+      else photo = null;
+      const point = {
+        id: r.id, surveyType: "yane", lat: r.lat, lng: r.lng, number: r.number,
+        count: r.count || "", deviceName: r.deviceName, createdAt: r.createdAt, updatedAt: r.updatedAt,
+        _syncedAt: r.updatedAt, photo: photo,
+        location: { text: r.location_text || "" },
+        mark: { text: r.mark_text || "" },
+        other: { text: r.other_text || "" },
+        direction: r.direction || "", entranceSide: r.entranceSide || "", houseType: r.houseType || "",
+        color: r.color || "", colorOther: "",
+        roofClass: r.roofClass || "", roofClassOther: r.roofClassOther || "",
+      };
+      await idbSet("points", point.id, point);
+    }
+    return { imported: toImport.length };
+  }catch(e){
+    return { imported: 0 }; // オフライン等は静かに無視。ローカルのデータで表示を続ける
+  }
 }
 
 let allYanePoints = [];
@@ -190,7 +273,7 @@ function buildCard(p){
         <div class="loc">${escapeHtml(locText)}</div>
       </div>
       <div class="chip-row" data-role="chips"></div>
-      <input type="text" class="other-input" placeholder="その他の内容を入力" data-role="other-input">
+      <input type="text" class="other-input show" placeholder="メモ（任意・自由記述）" data-role="other-input">
       <div class="save-hint" data-role="hint"></div>
     </div>
   `;
@@ -198,6 +281,12 @@ function buildCard(p){
   const chipRow = card.querySelector('[data-role="chips"]');
   const otherInput = card.querySelector('[data-role="other-input"]');
   const hint = card.querySelector('[data-role="hint"]');
+
+  function updateOtherPlaceholder(){
+    otherInput.placeholder = (p.roofClass === "その他")
+      ? "その他の内容を入力"
+      : "メモ（任意・自由記述）";
+  }
 
   ROOF_CLASS_OPTIONS.forEach(opt => {
     const chip = document.createElement("div");
@@ -207,22 +296,15 @@ function buildCard(p){
       chipRow.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
       chip.classList.add("active");
       p.roofClass = opt;
-      if(opt === "その他"){
-        otherInput.classList.add("show");
-        otherInput.focus();
-      } else {
-        otherInput.classList.remove("show");
-        p.roofClassOther = "";
-      }
+      updateOtherPlaceholder();
+      if(opt === "その他") otherInput.focus();
       await saveClassification(p, card, hint);
     });
     chipRow.appendChild(chip);
   });
 
-  if(p.roofClass === "その他"){
-    otherInput.classList.add("show");
-    otherInput.value = p.roofClassOther || "";
-  }
+  otherInput.value = p.roofClassOther || "";
+  updateOtherPlaceholder();
   let otherSaveTimer = null;
   otherInput.addEventListener("input", () => {
     p.roofClassOther = otherInput.value;
@@ -251,6 +333,8 @@ document.getElementById("unclassifiedOnlyBtn").addEventListener("click", (e) => 
 
 (async function(){
   const statusEl = document.getElementById("status");
+  statusEl.textContent = "最新のデータを確認しています…";
+  const result = await pullLatest();
   try{
     const all = await idbGetAll("points");
     allYanePoints = all.filter(p => p.surveyType === "yane");
@@ -258,6 +342,7 @@ document.getElementById("unclassifiedOnlyBtn").addEventListener("click", (e) => 
     statusEl.textContent = "データを読み込めませんでした。地図アプリを一度開いてから、もう一度お試しください。";
     return;
   }
+  statusEl.textContent = result.imported > 0 ? `他の端末の記録を${result.imported}件取り込みました` : "";
   updateProgressText();
   renderList();
 })();
