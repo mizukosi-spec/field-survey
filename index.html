@@ -677,6 +677,12 @@ svg.leaflet-image-layer.leaflet-interactive path {
 		-webkit-print-color-adjust: exact;
 		print-color-adjust: exact;
 		}
+	/* 拡大表示時（オーバーズーム）のタイルはbackground-imageで描画しているため、
+	   これも印刷時に消されないようにする */
+	.leaflet-tile {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+		}
 	}
 
 </style>
@@ -1657,10 +1663,16 @@ const OfflineTileLayer = L.GridLayer.extend({
     const key = `${nz}/${nx}/${ny}`;
     idbGet("tiles", key).then(blob => {
       if(blob){
-        const url = URL.createObjectURL(blob);
-        preload(url,
-          () => { setTimeout(() => URL.revokeObjectURL(url), 3000); done(null, el); },
-          () => { URL.revokeObjectURL(url); done(null, el); });
+        // blob URLは読み込み後に無効化する運用だと、印刷時にブラウザが
+        // 画面を作り直す際に読み込めず白くなってしまうことがあるため、
+        // 消えないdata URLに変換してから使う
+        const reader = new FileReader();
+        reader.onload = () => {
+          const url = reader.result;
+          preload(url, () => done(null, el), () => done(null, el));
+        };
+        reader.onerror = () => done(null, el);
+        reader.readAsDataURL(blob);
       } else if(navigator.onLine){
         let retried = false;
         const attempt = () => {
@@ -2564,61 +2576,75 @@ document.getElementById("cancelYaneBtn").addEventListener("click", closeSheets);
 document.getElementById("cancelSemiBtn").addEventListener("click", closeSheets);
 
 document.getElementById("saveYaneBtn").addEventListener("click", async () => {
-  let finalNumber = document.getElementById("fNumber").value.trim();
-  if(!editingId){
-    const info = await reserveNumber("yane");
-    finalNumber = info.number;
-    toast(info.shared
-      ? "オンラインで他の端末と重ならない番号を発行しました"
-      : "この端末だけの仮の番号です（共有設定がオフ、または未接続）");
+  const btn = document.getElementById("saveYaneBtn");
+  if(btn.disabled) return; // 連続タップで二重登録されるのを防ぐ
+  btn.disabled = true;
+  try{
+    let finalNumber = document.getElementById("fNumber").value.trim();
+    if(!editingId){
+      const info = await reserveNumber("yane");
+      finalNumber = info.number;
+      toast(info.shared
+        ? "オンラインで他の端末と重ならない番号を発行しました"
+        : "この端末だけの仮の番号です（共有設定がオフ、または未接続）");
+    }
+    const point = {
+      id: editingId || (crypto.randomUUID ? crypto.randomUUID() : "p" + Date.now() + Math.random().toString(16).slice(2)),
+      surveyType: "yane",
+      lat: pendingLatLng.lat, lng: pendingLatLng.lng,
+      number: finalNumber,
+      count: document.getElementById("fCount").value.trim(),
+      photo: photoYane.getValue(),
+      direction: formState.direction,
+      entranceSide: formState.entranceSide,
+      houseType: formState.houseType,
+      other: { text: document.getElementById("fOtherText").value.trim() },
+      updatedAt: new Date().toISOString(),
+    };
+    await commitPoint(point);
+  } finally {
+    btn.disabled = false;
   }
-  const point = {
-    id: editingId || (crypto.randomUUID ? crypto.randomUUID() : "p" + Date.now() + Math.random().toString(16).slice(2)),
-    surveyType: "yane",
-    lat: pendingLatLng.lat, lng: pendingLatLng.lng,
-    number: finalNumber,
-    count: document.getElementById("fCount").value.trim(),
-    photo: photoYane.getValue(),
-    direction: formState.direction,
-    entranceSide: formState.entranceSide,
-    houseType: formState.houseType,
-    other: { text: document.getElementById("fOtherText").value.trim() },
-    updatedAt: new Date().toISOString(),
-  };
-  await commitPoint(point);
 });
 
 document.getElementById("saveSemiBtn").addEventListener("click", async () => {
-  const hFrom = document.getElementById("sHeightFrom").value.trim();
-  const hTo = document.getElementById("sHeightTo").value.trim();
-  let heightVal = "";
-  if(hFrom && hTo) heightVal = `${hFrom}〜${hTo}`;
-  else heightVal = hFrom || hTo;
-  let finalNumber = document.getElementById("sNumber").value.trim();
-  if(!editingId){
-    const info = await reserveNumber("semi");
-    finalNumber = info.number;
-    toast(info.shared
-      ? "オンラインで他の端末と重ならない番号を発行しました"
-      : "この端末だけの仮の番号です（共有設定がオフ、または未接続）");
+  const btn = document.getElementById("saveSemiBtn");
+  if(btn.disabled) return; // 連続タップで二重登録されるのを防ぐ
+  btn.disabled = true;
+  try{
+    const hFrom = document.getElementById("sHeightFrom").value.trim();
+    const hTo = document.getElementById("sHeightTo").value.trim();
+    let heightVal = "";
+    if(hFrom && hTo) heightVal = `${hFrom}〜${hTo}`;
+    else heightVal = hFrom || hTo;
+    let finalNumber = document.getElementById("sNumber").value.trim();
+    if(!editingId){
+      const info = await reserveNumber("semi");
+      finalNumber = info.number;
+      toast(info.shared
+        ? "オンラインで他の端末と重ならない番号を発行しました"
+        : "この端末だけの仮の番号です（共有設定がオフ、または未接続）");
+    }
+    const point = {
+      id: editingId || (crypto.randomUUID ? crypto.randomUUID() : "p" + Date.now() + Math.random().toString(16).slice(2)),
+      surveyType: "semi",
+      lat: pendingLatLng.lat, lng: pendingLatLng.lng,
+      number: finalNumber,
+      count: document.getElementById("sCount").value.trim(),
+      treeType: { text: document.getElementById("sTreeText").value.trim() },
+      photo: photoSemi.getValue(),
+      semiSpecies: formState.semiSpecies,
+      semiPart: formState.semiPart,
+      semiDirection: formState.semiDirection,
+      height: heightVal,
+      thickness: document.getElementById("sThickness").value.trim(),
+      semiGround: formState.semiGround,
+      updatedAt: new Date().toISOString(),
+    };
+    await commitPoint(point);
+  } finally {
+    btn.disabled = false;
   }
-  const point = {
-    id: editingId || (crypto.randomUUID ? crypto.randomUUID() : "p" + Date.now() + Math.random().toString(16).slice(2)),
-    surveyType: "semi",
-    lat: pendingLatLng.lat, lng: pendingLatLng.lng,
-    number: finalNumber,
-    count: document.getElementById("sCount").value.trim(),
-    treeType: { text: document.getElementById("sTreeText").value.trim() },
-    photo: photoSemi.getValue(),
-    semiSpecies: formState.semiSpecies,
-    semiPart: formState.semiPart,
-    semiDirection: formState.semiDirection,
-    height: heightVal,
-    thickness: document.getElementById("sThickness").value.trim(),
-    semiGround: formState.semiGround,
-    updatedAt: new Date().toISOString(),
-  };
-  await commitPoint(point);
 });
 
 async function commitPoint(point){
