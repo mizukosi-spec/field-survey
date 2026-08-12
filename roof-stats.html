@@ -66,6 +66,27 @@
   #status{ position:absolute; top:10px; left:10px; z-index:5;
     background:var(--panel-bg); border:1px solid var(--panel-border); color:var(--text-secondary);
     font-size:12px; padding:8px 12px; border-radius:8px; }
+
+  #printLegend{ display:none; }
+
+  @media print {
+    #toolbar{ display:none !important; }
+    #legend{ display:none !important; }
+    #status{ display:none !important; }
+    html, body{ height:auto; }
+    body{ display:block; }
+    #mapWrap{ position:fixed; inset:0; }
+    #printLegend{
+      display:block; position:absolute; right:6mm; bottom:6mm; z-index:1000;
+      background:rgba(255,255,255,0.92); color:#111; border-radius:6px; padding:6px 10px;
+      font-size:9pt; line-height:1.6; box-shadow:0 1px 3px rgba(0,0,0,0.3);
+    }
+    #printLegend .row{ display:flex; align-items:center; gap:5px; white-space:nowrap; }
+    #printLegend .sw{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .pt-dot{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    #printLegend .sw{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    @page{ size: A4 landscape; margin: 0; }
+  }
 </style>
 </head>
 <body>
@@ -75,12 +96,16 @@
     <div class="title">屋根の分類 集計</div>
     <div class="sub" id="totalText">読み込み中…</div>
   </div>
-  <a class="btn" href="index.html">地図に戻る</a>
+  <div style="display:flex; gap:8px;">
+    <button class="btn" id="printBtn">印刷する</button>
+    <a class="btn" href="index.html">地図に戻る</a>
+  </div>
 </div>
 <div id="legend"></div>
 <div id="mapWrap">
   <div id="map"></div>
   <div id="status"></div>
+  <div id="printLegend"></div>
 </div>
 
 <script>
@@ -174,7 +199,26 @@ function renderMap(){
     marker.bindPopup(buildPopupHtml(p), { maxWidth: 260 });
   });
   document.getElementById("status").textContent = `表示中: ${visible.length} / ${allYanePoints.length} 件`;
+  updatePrintLegend();
 }
+
+/* 印刷用の、隅に置く簡易凡例。今地図に表示されている（＝件数が1件以上ある）分類だけを「〇〇、n か所」で並べる */
+function updatePrintLegend(){
+  const el = document.getElementById("printLegend");
+  el.innerHTML = "";
+  ALL_CATEGORIES.forEach(cat => {
+    if(!activeCategories.has(cat)) return;
+    const n = counts[cat] || 0;
+    if(n === 0) return;
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = `<span class="sw" style="background:${CATEGORY_COLORS[cat]}"></span>${escapeHtml(cat)}、${n}か所`;
+    el.appendChild(row);
+  });
+}
+
+document.getElementById("printBtn").addEventListener("click", () => window.print());
+window.addEventListener("beforeprint", () => { map.invalidateSize(); });
 
 function renderLegend(){
   const legend = document.getElementById("legend");
