@@ -55,7 +55,19 @@
   .ptable{ font-size:12px; }
   .ptable .r{ display:flex; justify-content:space-between; gap:10px; padding:2px 0; }
   .ptable .k{ color:#888; }
-  .ppopup img{ width:100%; max-width:220px; border-radius:8px; display:block; margin-bottom:8px; }
+  .ppopup{ width:230px; }
+  .ppopup img{ width:100%; max-width:230px; border-radius:8px; display:block; margin-bottom:8px; }
+  .ppopup .edit-chip-row{ display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
+  .ppopup .edit-chip{
+    border:1px solid #ddd; background:#f4f4f4; color:#222;
+    font-size:11px; font-weight:600; padding:5px 9px; border-radius:999px; cursor:pointer;
+  }
+  .ppopup .edit-chip.active{ background:var(--accent); border-color:var(--accent); color:#1a0e0a; }
+  .ppopup .edit-memo{
+    margin-top:7px; width:100%; padding:6px 8px; border-radius:6px; border:1px solid #ddd;
+    background:#fff; color:#222; font-size:12px;
+  }
+  .ppopup .edit-hint{ font-size:10px; color:#22a06b; margin-top:5px; height:12px; }
 
   .pt-dot{
     border-radius:50%; border:1.5px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,0.5);
@@ -103,7 +115,12 @@
     <div class="title">屋根の分類 集計</div>
     <div class="sub" id="totalText">読み込み中…</div>
   </div>
-  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+  <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+    <input type="text" id="jumpInput" placeholder="通し番号で移動" inputmode="numeric"
+      style="width:120px; padding:8px 10px; border-radius:8px; border:1px solid var(--panel-border); background:#151b25; color:var(--text-primary); font-size:13px;">
+    <button class="btn" id="jumpDownBtn" title="ひとつ前の番号へ" style="padding:9px 12px;">▼</button>
+    <button class="btn" id="jumpUpBtn" title="ひとつ後の番号へ" style="padding:9px 12px;">▲</button>
+    <button class="btn" id="jumpBtn">移動</button>
     <button class="btn" id="markerStyleBtn">番号表示</button>
     <button class="btn" id="baseMapBtn">背景: 航空写真</button>
     <button class="btn" id="printBtn">印刷する</button>
@@ -160,11 +177,40 @@ function idbGetAll(store){
     r.onerror = () => rej(r.error);
   }));
 }
+function idbSet(store, key, value){
+  return openDB().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(store, "readwrite");
+    tx.objectStore(store).put(value);
+    tx.oncomplete = () => res();
+    tx.onerror = () => rej(tx.error);
+  }));
+}
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
 function categoryOf(p){
   return p.roofClass && p.roofClass.trim() ? p.roofClass : UNCLASSIFIED;
+}
+
+/* 他の端末・スプレッドシートへの反映は、地図アプリ(index.html)と同じ送信先設定を使う */
+function getSyncCfg(){
+  return {
+    endpoint: localStorage.getItem("fieldSync_endpoint") || "",
+    group: localStorage.getItem("fieldSync_group") || "",
+    device: (localStorage.getItem("fieldSync_device") || "").trim(),
+  };
+}
+async function pushOnePoint(point){
+  const cfg = getSyncCfg();
+  if(!cfg.endpoint || !cfg.group) return;
+  if(!navigator.onLine) return;
+  try{
+    await fetch(cfg.endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ group: cfg.group, device: cfg.device, points: [point] }),
+    });
+  }catch(e){ /* 通信できないときは静かに諦める（記録自体はローカルに保存済み） */ }
 }
 
 const map = L.map("map", { zoomControl: true }).setView([35.1802, 136.9066], 17);
@@ -228,22 +274,85 @@ function buildPopupHtml(p){
   const cat = categoryOf(p);
   const photoHtml = p.photo ? `<img src="${p.photo}">` : "";
   const locText = (p.location && p.location.text) || "";
-  const memo = p.roofClassOther || "";
   return `
-    <div class="ppopup">
+    <div class="ppopup" data-id="${escapeHtml(p.id)}">
       ${photoHtml}
       <div class="ptable">
         <div class="r"><span class="k">番号</span><span>${escapeHtml(p.number || "-")}</span></div>
-        <div class="r"><span class="k">分類</span><span>${escapeHtml(cat)}</span></div>
         ${locText ? `<div class="r"><span class="k">場所</span><span>${escapeHtml(locText)}</span></div>` : ""}
-        ${memo ? `<div class="r"><span class="k">メモ</span><span>${escapeHtml(memo)}</span></div>` : ""}
       </div>
+      <div class="edit-chip-row" data-role="chips"></div>
+      <input type="text" class="edit-memo" placeholder="メモ（任意・自由記述）" data-role="memo">
+      <div class="edit-hint" data-role="hint"></div>
     </div>
   `;
 }
 
+function wirePopupEditing(marker, p){
+  marker.on("popupopen", (e) => {
+    const el = e.popup.getElement();
+    const chipRow = el.querySelector('[data-role="chips"]');
+    const memoInput = el.querySelector('[data-role="memo"]');
+    const hint = el.querySelector('[data-role="hint"]');
+    if(!chipRow) return;
+
+    chipRow.innerHTML = "";
+    ROOF_CLASS_OPTIONS.forEach(opt => {
+      const chip = document.createElement("div");
+      chip.className = "edit-chip" + (p.roofClass === opt ? " active" : "");
+      chip.textContent = opt;
+      chip.addEventListener("click", async () => {
+        chipRow.querySelectorAll(".edit-chip").forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        p.roofClass = opt;
+        await savePointEdit(p, marker, hint);
+      });
+      chipRow.appendChild(chip);
+    });
+
+    memoInput.value = p.roofClassOther || "";
+    let memoTimer = null;
+    memoInput.oninput = () => {
+      p.roofClassOther = memoInput.value;
+      clearTimeout(memoTimer);
+      memoTimer = setTimeout(() => savePointEdit(p, marker, hint), 500);
+    };
+  });
+}
+
+async function savePointEdit(p, marker, hint){
+  p.updatedAt = new Date().toISOString();
+  await idbSet("points", p.id, p);
+  pushOnePoint(p); // 送信は裏側で試みる（失敗してもローカルの記録には影響しない）
+
+  // 件数・凡例・このマーカーの色を、ポップアップを閉じずにその場で更新する
+  counts = {};
+  ALL_CATEGORIES.forEach(c => counts[c] = 0);
+  allYanePoints.forEach(pp => { counts[categoryOf(pp)]++; });
+  document.getElementById("totalText").textContent =
+    `屋根マーク 全${allYanePoints.length}件（うち未分類 ${counts[UNCLASSIFIED]}件）`;
+  renderLegend();
+  updatePrintLegend();
+  if(markerStyle === "number"){
+    const color = CATEGORY_COLORS[categoryOf(p)] || "#999";
+    marker.setIcon(L.divIcon({
+      className: "",
+      html: `<div class="pt-dot" style="width:22px; height:22px; background:${color};">${escapeHtml(p.number || "")}</div>`,
+      iconSize: [22,22], iconAnchor: [11,11],
+    }));
+  }
+
+  if(hint){
+    hint.textContent = "保存しました";
+    setTimeout(() => { hint.textContent = ""; }, 1500);
+  }
+}
+
+let markerRefs = {};
+
 function renderMap(){
   pointsLayer.clearLayers();
+  markerRefs = {};
   const visible = allYanePoints.filter(p => activeCategories.has(categoryOf(p)));
   const isDot = markerStyle === "dot";
   visible.forEach(p => {
@@ -256,10 +365,48 @@ function renderMap(){
     });
     const marker = L.marker([p.lat, p.lng], { icon }).addTo(pointsLayer);
     marker.bindPopup(buildPopupHtml(p), { maxWidth: 260 });
+    wirePopupEditing(marker, p);
+    markerRefs[p.id] = marker;
   });
   document.getElementById("status").textContent = `表示中: ${visible.length} / ${allYanePoints.length} 件`;
   updatePrintLegend();
 }
+
+/* 通し番号を入力して、その地点まで地図を移動しポップアップを開く */
+function jumpToNumber(numberStr){
+  const target = (numberStr || "").trim();
+  if(!target) return;
+  const point = allYanePoints.find(p => String(p.number || "").trim() === target);
+  if(!point){
+    document.getElementById("status").textContent = `番号「${target}」の屋根マークは見つかりませんでした`;
+    return;
+  }
+  const cat = categoryOf(point);
+  if(!activeCategories.has(cat)){
+    activeCategories.add(cat);
+    renderLegend();
+  }
+  renderMap();
+  map.setView([point.lat, point.lng], Math.max(map.getZoom(), 18));
+  setTimeout(() => {
+    const m = markerRefs[point.id];
+    if(m) m.openPopup();
+  }, 300);
+}
+document.getElementById("jumpBtn").addEventListener("click", () => jumpToNumber(document.getElementById("jumpInput").value));
+document.getElementById("jumpInput").addEventListener("keydown", (e) => {
+  if(e.key === "Enter") jumpToNumber(document.getElementById("jumpInput").value);
+});
+function stepJumpNumber(delta){
+  const input = document.getElementById("jumpInput");
+  const current = parseInt(input.value, 10);
+  const next = (isNaN(current) ? 0 : current) + delta;
+  const clamped = Math.max(1, next);
+  input.value = String(clamped);
+  jumpToNumber(String(clamped));
+}
+document.getElementById("jumpUpBtn").addEventListener("click", () => stepJumpNumber(1));
+document.getElementById("jumpDownBtn").addEventListener("click", () => stepJumpNumber(-1));
 
 /* 印刷用の、隅に置く簡易凡例。今地図に表示されている（＝件数が1件以上ある）分類だけを「〇〇、n か所」で並べる */
 function updatePrintLegend(){
