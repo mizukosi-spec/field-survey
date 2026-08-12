@@ -171,7 +171,10 @@ const map = L.map("map", { zoomControl: true }).setView([35.1802, 136.9066], 17)
 const aerialLayer = L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/ort/{z}/{x}/{y}.jpg", {
   maxZoom: 21, maxNativeZoom: 18, attribution: ""
 });
-const oldMapLayer = L.tileLayer("https://ktgis.net/kjmapw/kjtilemap/chukyo/04/{z}/{x}/{y}.png", {
+const oldMapLayer1890 = L.tileLayer("https://ktgis.net/kjmapw/kjtilemap/chukyo/2man/{z}/{x}/{y}.png", {
+  tms: true, minZoom: 8, maxZoom: 21, maxNativeZoom: 16, attribution: ""
+});
+const oldMapLayer1959 = L.tileLayer("https://ktgis.net/kjmapw/kjtilemap/chukyo/04/{z}/{x}/{y}.png", {
   tms: true, minZoom: 8, maxZoom: 21, maxNativeZoom: 16, attribution: ""
 });
 const stdMapLayer = L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png", {
@@ -179,11 +182,18 @@ const stdMapLayer = L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x
 });
 aerialLayer.addTo(map);
 
-const BASE_LAYERS = ["aerial", "old", "std"];
-const BASE_LAYER_LABELS = { aerial: "航空写真", old: "1959〜1960年ごろの地図", std: "地理院地図" };
+const BASE_LAYERS = ["aerial", "old1890", "old1959", "std"];
+const BASE_LAYER_LABELS = {
+  aerial: "航空写真", old1890: "1888〜1898年ごろの地図", old1959: "1959〜1960年ごろの地図", std: "地理院地図"
+};
+const OLD_MAP_CREDIT_TEXT = {
+  old1890: "今昔マップ on the web（中京圏 1888〜1898年ごろ）",
+  old1959: "今昔マップ on the web（中京圏 1959〜1960年ごろ）",
+};
 let baseLayerMode = "aerial";
 function currentBaseLayer(){
-  if(baseLayerMode === "old") return oldMapLayer;
+  if(baseLayerMode === "old1890") return oldMapLayer1890;
+  if(baseLayerMode === "old1959") return oldMapLayer1959;
   if(baseLayerMode === "std") return stdMapLayer;
   return aerialLayer;
 }
@@ -193,7 +203,13 @@ document.getElementById("baseMapBtn").addEventListener("click", () => {
   baseLayerMode = nextMode;
   currentBaseLayer().addTo(map);
   document.getElementById("baseMapBtn").textContent = `背景: ${BASE_LAYER_LABELS[baseLayerMode]}`;
-  document.getElementById("oldMapCredit").style.display = (baseLayerMode === "old") ? "block" : "none";
+  const credit = document.getElementById("oldMapCredit");
+  if(OLD_MAP_CREDIT_TEXT[baseLayerMode]){
+    credit.textContent = OLD_MAP_CREDIT_TEXT[baseLayerMode];
+    credit.style.display = "block";
+  } else {
+    credit.style.display = "none";
+  }
 });
 
 const pointsLayer = L.layerGroup().addTo(map);
