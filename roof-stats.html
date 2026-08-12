@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>屋根の分類 集計 — フィールド調べ</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root{
+    --panel-bg:#0f141c; --panel:#1c2430; --panel-border: rgba(255,255,255,0.09);
+    --text-primary:#F2F4F7; --text-secondary:#93A0B4;
+    --accent:#FF6B4A; --accent-dim: rgba(255,107,74,0.18);
+    --font-ui: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html, body{ margin:0; height:100%; font-family:var(--font-ui); background:var(--panel-bg); color:var(--text-primary); }
+  body{ display:flex; flex-direction:column; }
+
+  #toolbar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+    padding:12px 14px; padding-top:calc(12px + env(safe-area-inset-top));
+    background:var(--panel); border-bottom:1px solid var(--panel-border); z-index:10;
+  }
+  #toolbar .title{ font-size:14px; font-weight:700; }
+  #toolbar .sub{ font-size:12px; color:var(--text-secondary); margin-top:2px; }
+  .btn{
+    border:none; border-radius:8px; padding:9px 14px; font-size:13px; font-weight:700; cursor:pointer;
+    text-decoration:none; display:inline-block; color:#fff; background:#333d4a;
+  }
+
+  #legend{
+    display:flex; flex-wrap:wrap; gap:8px; padding:10px 14px;
+    background:var(--panel); border-bottom:1px solid var(--panel-border);
+  }
+  .chip{
+    display:flex; align-items:center; gap:7px;
+    border:1px solid var(--panel-border); background:#151b25; color:var(--text-secondary);
+    font-size:12px; font-weight:600; padding:7px 11px; border-radius:999px; cursor:pointer;
+    user-select:none;
+  }
+  .chip .swatch{ width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .chip .count{ font-weight:800; color:var(--text-primary); }
+  .chip.off{ opacity:0.35; }
+  .chip-actions{ display:flex; gap:6px; margin-left:auto; }
+  .chip-actions button{
+    border:none; background:#333d4a; color:var(--text-secondary); font-size:11px; font-weight:700;
+    padding:6px 10px; border-radius:6px; cursor:pointer;
+  }
+
+  #mapWrap{ position:relative; flex:1; min-height:0; }
+  #map{ position:absolute; inset:0; background:#0a0d12; }
+  #map .leaflet-popup-content-wrapper{ background:#fff; color:#161a20; border-radius:12px; }
+  #map .leaflet-popup-content{ margin:12px 14px; font-family:var(--font-ui); }
+  .ptable{ font-size:12px; }
+  .ptable .r{ display:flex; justify-content:space-between; gap:10px; padding:2px 0; }
+  .ptable .k{ color:#888; }
+  .ppopup img{ width:100%; max-width:220px; border-radius:8px; display:block; margin-bottom:8px; }
+
+  .pt-dot{
+    border-radius:50%; border:1.5px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,0.5);
+    display:flex; align-items:center; justify-content:center;
+    font-size:9px; font-weight:800; color:#111; font-family:var(--font-ui);
+  }
+
+  #status{ position:absolute; top:10px; left:10px; z-index:5;
+    background:var(--panel-bg); border:1px solid var(--panel-border); color:var(--text-secondary);
+    font-size:12px; padding:8px 12px; border-radius:8px; }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <div>
+    <div class="title">屋根の分類 集計</div>
+    <div class="sub" id="totalText">読み込み中…</div>
+  </div>
+  <a class="btn" href="index.html">地図に戻る</a>
+</div>
+<div id="legend"></div>
+<div id="mapWrap">
+  <div id="map"></div>
+  <div id="status"></div>
+</div>
+
+<script>
+const DB_NAME = "gsiFieldMapDB";
+const DB_VERSION = 1;
+const ROOF_CLASS_OPTIONS = ["水", "角字の水", "その他の水", "金色の家紋・寺社紋", "瓦色の家紋・寺社紋", "卍", "巴", "蓮華", "鬼", "その他"];
+const UNCLASSIFIED = "未分類";
+const ALL_CATEGORIES = ROOF_CLASS_OPTIONS.concat([UNCLASSIFIED]);
+
+/* カテゴリごとの色（凡例・地図のピン両方で使う） */
+const CATEGORY_COLORS = {
+  "水": "#3B82F6",
+  "角字の水": "#60A5FA",
+  "その他の水": "#93C5FD",
+  "金色の家紋・寺社紋": "#F5C518",
+  "瓦色の家紋・寺社紋": "#B08968",
+  "卍": "#F97316",
+  "巴": "#A78BFA",
+  "蓮華": "#EC4899",
+  "鬼": "#EF4444",
+  "その他": "#22C55E",
+  "未分類": "#6B7280",
+};
+
+function openDB(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if(!db.objectStoreNames.contains("tiles")) db.createObjectStore("tiles");
+      if(!db.objectStoreNames.contains("points")) db.createObjectStore("points", {keyPath:"id"});
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+function idbGetAll(store){
+  return openDB().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(store, "readonly");
+    const r = tx.objectStore(store).getAll();
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  }));
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function categoryOf(p){
+  return p.roofClass && p.roofClass.trim() ? p.roofClass : UNCLASSIFIED;
+}
+
+const map = L.map("map", { zoomControl: true }).setView([35.1802, 136.9066], 17);
+L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/ort/{z}/{x}/{y}.jpg", {
+  maxZoom: 21, maxNativeZoom: 18, attribution: ""
+}).addTo(map);
+
+const pointsLayer = L.layerGroup().addTo(map);
+let activeCategories = new Set(ALL_CATEGORIES);
+let allYanePoints = [];
+let counts = {};
+
+function buildPopupHtml(p){
+  const cat = categoryOf(p);
+  const photoHtml = p.photo ? `<img src="${p.photo}">` : "";
+  const locText = (p.location && p.location.text) || "";
+  const memo = p.roofClassOther || "";
+  return `
+    <div class="ppopup">
+      ${photoHtml}
+      <div class="ptable">
+        <div class="r"><span class="k">番号</span><span>${escapeHtml(p.number || "-")}</span></div>
+        <div class="r"><span class="k">分類</span><span>${escapeHtml(cat)}</span></div>
+        ${locText ? `<div class="r"><span class="k">場所</span><span>${escapeHtml(locText)}</span></div>` : ""}
+        ${memo ? `<div class="r"><span class="k">メモ</span><span>${escapeHtml(memo)}</span></div>` : ""}
+      </div>
+    </div>
+  `;
+}
+
+function renderMap(){
+  pointsLayer.clearLayers();
+  const visible = allYanePoints.filter(p => activeCategories.has(categoryOf(p)));
+  visible.forEach(p => {
+    const color = CATEGORY_COLORS[categoryOf(p)] || "#999";
+    const icon = L.divIcon({
+      className: "",
+      html: `<div class="pt-dot" style="width:22px; height:22px; background:${color};">${escapeHtml(p.number || "")}</div>`,
+      iconSize: [22,22], iconAnchor: [11,11],
+    });
+    const marker = L.marker([p.lat, p.lng], { icon }).addTo(pointsLayer);
+    marker.bindPopup(buildPopupHtml(p), { maxWidth: 260 });
+  });
+  document.getElementById("status").textContent = `表示中: ${visible.length} / ${allYanePoints.length} 件`;
+}
+
+function renderLegend(){
+  const legend = document.getElementById("legend");
+  legend.innerHTML = "";
+  ALL_CATEGORIES.forEach(cat => {
+    const chip = document.createElement("div");
+    chip.className = "chip" + (activeCategories.has(cat) ? "" : " off");
+    chip.innerHTML = `<span class="swatch" style="background:${CATEGORY_COLORS[cat]}"></span>${escapeHtml(cat)} <span class="count">${counts[cat] || 0}</span>`;
+    chip.addEventListener("click", () => {
+      if(activeCategories.has(cat)) activeCategories.delete(cat);
+      else activeCategories.add(cat);
+      chip.classList.toggle("off", !activeCategories.has(cat));
+      renderMap();
+    });
+    legend.appendChild(chip);
+  });
+
+  const actions = document.createElement("div");
+  actions.className = "chip-actions";
+  const allBtn = document.createElement("button");
+  allBtn.textContent = "すべて表示";
+  allBtn.addEventListener("click", () => {
+    activeCategories = new Set(ALL_CATEGORIES);
+    renderLegend();
+    renderMap();
+  });
+  const noneBtn = document.createElement("button");
+  noneBtn.textContent = "すべて非表示";
+  noneBtn.addEventListener("click", () => {
+    activeCategories = new Set();
+    renderLegend();
+    renderMap();
+  });
+  actions.appendChild(allBtn);
+  actions.appendChild(noneBtn);
+  legend.appendChild(actions);
+}
+
+(async function(){
+  const statusEl = document.getElementById("status");
+  statusEl.textContent = "読み込み中…";
+  let all = [];
+  try{
+    all = await idbGetAll("points");
+  }catch(e){
+    document.getElementById("totalText").textContent = "データを読み込めませんでした。地図アプリを一度開いてから、もう一度お試しください。";
+    return;
+  }
+  allYanePoints = all.filter(p => p.surveyType === "yane");
+
+  counts = {};
+  ALL_CATEGORIES.forEach(c => counts[c] = 0);
+  allYanePoints.forEach(p => { counts[categoryOf(p)]++; });
+
+  document.getElementById("totalText").textContent =
+    `屋根マーク 全${allYanePoints.length}件（うち未分類 ${counts[UNCLASSIFIED]}件）`;
+
+  renderLegend();
+  renderMap();
+
+  if(allYanePoints.length > 0){
+    const bounds = L.latLngBounds(allYanePoints.map(p => [p.lat, p.lng]));
+    map.fitBounds(bounds, { padding: [30,30] });
+  }
+})();
+</script>
+</body>
+</html>
