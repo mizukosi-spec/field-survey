@@ -1124,7 +1124,7 @@ html,body{
   <div class="title-chip"><span class="dot"></span><span id="areaLabel">フィールド調べ</span></div>
 </div>
 <div id="topbarRight">
-  <div class="icon-btn" id="oldMapToggleBtn" title="航空写真／旧版地形図(明治期)／地理院地図／土地利用図を切り替え">🕰️</div>
+  <div class="icon-btn" id="oldMapToggleBtn" title="航空写真／旧版地形図(明治期)／旧版地形図(1959〜1960年)／地理院地図／土地利用図を切り替え">🕰️</div>
   <div class="icon-btn" id="markerStyleBtn" title="ポイント表示を切り替え(番号／点のみ)">#</div>
   <div class="icon-btn" id="locateBtn" title="現在地をリアルタイム表示">◎</div>
   <div class="icon-btn" id="listBtn" title="地点一覧">☰</div>
@@ -1709,7 +1709,10 @@ tileLayer.addTo(map);
  * 旧版地形図・標準地図はオフライン保存はせず、通信があるときだけオンラインで読み込む。
  * 利用規約により「今昔マップ on the web」の表示を必須としている。
  */
-const oldMapLayer = L.tileLayer("https://ktgis.net/kjmapw/kjtilemap/chukyo/2man/{z}/{x}/{y}.png", {
+const oldMapLayer1890 = L.tileLayer("https://ktgis.net/kjmapw/kjtilemap/chukyo/2man/{z}/{x}/{y}.png", {
+  tms: true, minZoom: 8, maxZoom: MAP_MAX_ZOOM, maxNativeZoom: 16, tileSize: 256, attribution: ""
+});
+const oldMapLayer1959 = L.tileLayer("https://ktgis.net/kjmapw/kjtilemap/chukyo/04/{z}/{x}/{y}.png", {
   tms: true, minZoom: 8, maxZoom: MAP_MAX_ZOOM, maxNativeZoom: 16, tileSize: 256, attribution: ""
 });
 const stdMapLayer = L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png", {
@@ -1816,10 +1819,15 @@ const roadLineOverlay = new RoadLineOverlay({
   minZoom: 10, maxZoom: MAP_MAX_ZOOM, minNativeZoom: 13, maxNativeZoom: 18, tileSize: 256
 });
 
-const BASE_LAYERS = ["aerial", "old", "std", "landuse"];
+const BASE_LAYERS = ["aerial", "old1890", "old1959", "std", "landuse"];
+const OLD_MAP_CREDIT_TEXT = {
+  old1890: "今昔マップ on the web（中京圏 1888～1898年ごろ）",
+  old1959: "今昔マップ on the web（中京圏 1959～1960年ごろ）",
+};
 let baseLayerMode = "aerial";
 function currentBaseLayer(){
-  if(baseLayerMode === "old") return oldMapLayer;
+  if(baseLayerMode === "old1890") return oldMapLayer1890;
+  if(baseLayerMode === "old1959") return oldMapLayer1959;
   if(baseLayerMode === "std") return stdMapLayer;
   if(baseLayerMode === "landuse") return landUseLayer;
   return tileLayer;
@@ -1842,9 +1850,15 @@ document.getElementById("oldMapToggleBtn").addEventListener("click", () => {
   if(baseLayerMode === "landuse") roadLineOverlay.addTo(map);
 
   btn.classList.toggle("active", baseLayerMode !== "aerial");
-  credit.style.display = (baseLayerMode === "old") ? "block" : "none";
+  if(OLD_MAP_CREDIT_TEXT[baseLayerMode]){
+    credit.textContent = OLD_MAP_CREDIT_TEXT[baseLayerMode];
+    credit.style.display = "block";
+  } else {
+    credit.style.display = "none";
+  }
 
-  const label = baseLayerMode === "old" ? "旧版地形図（明治期・中京圏）"
+  const label = baseLayerMode === "old1890" ? "旧版地形図（明治期・中京圏）"
+    : baseLayerMode === "old1959" ? "旧版地形図（1959〜1960年ごろ・中京圏）"
     : baseLayerMode === "std" ? "地理院地図（標準地図）"
     : baseLayerMode === "landuse" ? "土地利用図（2003年・4色分け）"
     : "航空写真";
