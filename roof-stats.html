@@ -67,6 +67,12 @@
     background:var(--panel-bg); border:1px solid var(--panel-border); color:var(--text-secondary);
     font-size:12px; padding:8px 12px; border-radius:8px; }
 
+  #oldMapCredit{
+    display:none; position:absolute; left:10px; bottom:10px; z-index:5;
+    background:var(--panel-bg); border:1px solid var(--panel-border); color:var(--text-secondary);
+    font-size:11px; font-weight:600; padding:6px 12px; border-radius:999px;
+  }
+
   #printLegend{ display:none; }
 
   @media print {
@@ -85,6 +91,7 @@
     #printLegend .sw{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
     .pt-dot{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     #printLegend .sw{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    #oldMapCredit{ left:6mm; bottom:6mm; }
     @page{ size: A4 landscape; margin: 0; }
   }
 </style>
@@ -96,7 +103,9 @@
     <div class="title">屋根の分類 集計</div>
     <div class="sub" id="totalText">読み込み中…</div>
   </div>
-  <div style="display:flex; gap:8px;">
+  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+    <button class="btn" id="markerStyleBtn">番号表示</button>
+    <button class="btn" id="baseMapBtn">背景: 航空写真</button>
     <button class="btn" id="printBtn">印刷する</button>
     <a class="btn" href="index.html">地図に戻る</a>
   </div>
@@ -106,6 +115,7 @@
   <div id="map"></div>
   <div id="status"></div>
   <div id="printLegend"></div>
+  <div id="oldMapCredit">今昔マップ on the web（中京圏 1959〜1960年ごろ）</div>
 </div>
 
 <script>
@@ -158,14 +168,45 @@ function categoryOf(p){
 }
 
 const map = L.map("map", { zoomControl: true }).setView([35.1802, 136.9066], 17);
-L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/ort/{z}/{x}/{y}.jpg", {
+const aerialLayer = L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/ort/{z}/{x}/{y}.jpg", {
   maxZoom: 21, maxNativeZoom: 18, attribution: ""
-}).addTo(map);
+});
+const oldMapLayer = L.tileLayer("https://ktgis.net/kjmapw/kjtilemap/chukyo/04/{z}/{x}/{y}.png", {
+  tms: true, minZoom: 8, maxZoom: 21, maxNativeZoom: 16, attribution: ""
+});
+const stdMapLayer = L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png", {
+  maxZoom: 21, maxNativeZoom: 18, attribution: ""
+});
+aerialLayer.addTo(map);
+
+const BASE_LAYERS = ["aerial", "old", "std"];
+const BASE_LAYER_LABELS = { aerial: "航空写真", old: "1959〜1960年ごろの地図", std: "地理院地図" };
+let baseLayerMode = "aerial";
+function currentBaseLayer(){
+  if(baseLayerMode === "old") return oldMapLayer;
+  if(baseLayerMode === "std") return stdMapLayer;
+  return aerialLayer;
+}
+document.getElementById("baseMapBtn").addEventListener("click", () => {
+  const nextMode = BASE_LAYERS[(BASE_LAYERS.indexOf(baseLayerMode) + 1) % BASE_LAYERS.length];
+  currentBaseLayer().remove();
+  baseLayerMode = nextMode;
+  currentBaseLayer().addTo(map);
+  document.getElementById("baseMapBtn").textContent = `背景: ${BASE_LAYER_LABELS[baseLayerMode]}`;
+  document.getElementById("oldMapCredit").style.display = (baseLayerMode === "old") ? "block" : "none";
+});
 
 const pointsLayer = L.layerGroup().addTo(map);
 let activeCategories = new Set(ALL_CATEGORIES);
+let markerStyle = "number"; // "number" | "dot"
 let allYanePoints = [];
 let counts = {};
+
+document.getElementById("markerStyleBtn").addEventListener("click", () => {
+  markerStyle = (markerStyle === "number") ? "dot" : "number";
+  document.getElementById("markerStyleBtn").textContent = (markerStyle === "number") ? "番号表示" : "赤ドット表示";
+  renderMap();
+});
 
 function buildPopupHtml(p){
   const cat = categoryOf(p);
@@ -188,12 +229,14 @@ function buildPopupHtml(p){
 function renderMap(){
   pointsLayer.clearLayers();
   const visible = allYanePoints.filter(p => activeCategories.has(categoryOf(p)));
+  const isDot = markerStyle === "dot";
   visible.forEach(p => {
-    const color = CATEGORY_COLORS[categoryOf(p)] || "#999";
+    const color = isDot ? "#EF4444" : (CATEGORY_COLORS[categoryOf(p)] || "#999");
+    const size = isDot ? 12 : 22;
     const icon = L.divIcon({
       className: "",
-      html: `<div class="pt-dot" style="width:22px; height:22px; background:${color};">${escapeHtml(p.number || "")}</div>`,
-      iconSize: [22,22], iconAnchor: [11,11],
+      html: `<div class="pt-dot" style="width:${size}px; height:${size}px; background:${color};">${isDot ? "" : escapeHtml(p.number || "")}</div>`,
+      iconSize: [size,size], iconAnchor: [size/2,size/2],
     });
     const marker = L.marker([p.lat, p.lng], { icon }).addTo(pointsLayer);
     marker.bindPopup(buildPopupHtml(p), { maxWidth: 260 });
